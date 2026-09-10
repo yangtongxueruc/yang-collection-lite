@@ -1,310 +1,612 @@
-## 开场：探访得州数据中心
+
+## 开场：得州数据中心探访与核心疑问
 
 **SECTION_NOTE**
-- Dwarkesh 实地探访 Jane Street 位于得州的数据中心
+- Dwarkesh 实地探访 Jane Street 位于得州的数据中心（本期为探访后的深度对谈）
 - 嘉宾：技术团队共同负责人 Yaron Minsky、物理工程团队负责人 Dan Pontecorvo
-- 核心疑问：纳秒级交易如何与 GPU 训练共存
+- 核心疑问：既然要在纳秒级交易，怎么还能同时做 GPU 训练
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: Jane Street is a partner on my podcast, and we had this fun idea: why don't I come visit the data center you run for training AI models? So I just toured your data center in Texas, led by Yaron Minsky—co-head of the tech group (the transcript mislabeled him as Ron Minsky)—and Dan Pontecorvo, who runs the physical engineering team. Thank you both for the tour. I'd never been to a place like this before, so this was my first visit, and it was fantastic. I've always been confused: since you trade at the nanosecond level, how can you also do GPU stuff? Maybe you can walk me through what your actual trading time horizons look like. When you make a trading decision, can you afford the cost—or the latency—of running a large model?
-**中文：** Dwarkesh：Jane Street 是我播客的合作伙伴，我们想到的一个有趣点子是：为什么我不过来亲自参观一下你们运行的用于训练（AI模型）的数据中心呢？所以我刚刚在技术团队共同负责人 Yaron Minsky（译注：视频中口误及速记为 Ron Minsky）和物理工程团队负责人 Dan Pavatova（译注：速记为 Dan Ponttovo）的带领下，参观了这个位于德克萨斯州的数据中心。非常感谢两位带我参观。值得一提的是，我以前从未去过这种地方，所以我也是第一次参观，这太棒了。 以前我一直很困惑：既然你们需要在纳秒（nanosecond）级别进行交易，那你们怎么能做 GPU 相关的事情呢？也许你们可以详细讲讲，你们交易的实际时间跨度（时限）是怎样的？在做出交易决策的过程中，你们能负担得起运行大型模型的成本（或时间延迟）吗？
+**[00:00 – 00:20]**
+**EN:** Jane Street are partners of my podcast and one of the fun ideas we had is why don't I come visit a data center uh for training that you guys run. So I just got a tour of this uh Texas data center from Yaron Minsky who co-heads the technology group and Dan Pontecorvo who heads the physical engineering team. So
+**中文：** Jane Street 是我播客的合作伙伴，我们的有趣想法之一是我为什么不去参观一下你们运营的数据中心呢？我刚刚从技术团队联合负责人 Yaron Minsky 和物理工程团队负责人 Dan Pontecorvo 的带领下参观了这个德克萨斯州数据中心。所以
+
+**[00:20 – 00:37]**
+**EN:** thank you guys for showing me around it's worth I've never been here before so I also got I was also getting a tour which was great. Previously I was confused well how can you be doing GPU things if you need to be trading on nanoseconds and maybe you can talk through what is the actual time horizon of the
+**中文：** 谢谢你们带我四处参观，我以前从未来过这里，所以我也得到了一次很棒的旅行。之前我很困惑，如果你需要以纳秒为单位进行交易，你怎么能做 GPU 的事情，也许你可以谈谈实际的时间范围是多少？
+
+**[00:37 – 00:54]**
+**EN:** trading you guys do can you afford to have be running big models to in in the middle of making trading decisions I think the thing to understand here is there isn't one time horizon there are many time horizons uh there are trading systems we build and trades that we do where in order to be competitive you
+**中文：** 你们做的交易​​你们能负担得起在做出交易决策的过程中运行大型模型吗？我认为这里要理解的是，没有一个时间范围，而是有很多时间范围，呃，我们建立了一些交易系统，我们在哪里进行交易，以便与您竞争
 
 
-## 时间跨度的谱系：从 100 纳秒到数小时
+## 交易的时间跨度谱系：从 100 纳秒到数小时
 
 **SECTION_NOTE**
-- 交易并非单一时间跨度，而是从 100 纳秒到半小时/当天的完整谱系
-- 极速段（100 纳秒内）只能靠 FPGA 直连网络，决策极简；越慢的段可做越大模型
-- 最佳策略是集成（ensemble）：不同时间尺度用不同复杂度的决策
+- 交易没有单一时间跨度，而是一条从 100 纳秒到半小时/当天的完整谱系
+- 100 纳秒内无法用 CPU，只能靠 FPGA 直连网络；越慢的尺度可用越复杂的模型
+- 最佳策略是集成（ensemble）：不同时间尺度配不同复杂度的决策
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Yaron: I think the key thing to understand here is that there isn't a single time horizon—there's a whole spectrum of them. Some of the trading systems we build, and some trades we do, to stay competitive you actually have to process and return a packet within 100 nanoseconds. That's a completely different technical regime, right? People sometimes ask, 'Oh, can you write high-performance stuff in OCaml?' Our answer is: 'We can. But at that speed it doesn't matter whether you write it in OCaml, Rust, or C++, because you can't use a CPU at all. You have to use an FPGA wired directly into the network. You return the packet so fast that if you put an oscilloscope on the input and output wires, you'd see the packet start leaving the output before it's even finished arriving on the input.' So that's a very different, very special domain. But when you're in that time regime, you can't actually do much computation—the decisions you make are very simple. In fact, there's a whole trade-off curve between how 'smart' a decision is—whether it's a model or even a hand-written decision process—and how fast you return it. And the right way to build the best trading strategy is really an ensemble approach. For some kinds of decisions you make very simple ones extremely fast; for others your operating scale might be—not 100 nanoseconds anymore, but maybe microseconds, tens of microseconds, hundreds of microseconds, or milliseconds; and in some cases a process that returns a decision within half an hour or by the end of the day is totally fine, and you're equally competitive on that time basis. But the type of decision you make is completely different across all those horizons.
-**中文：** Yaron：我认为这里需要理解的核心一点是，并没有单一的时间跨度，而是存在着许多不同的时间跨度。我们构建的一些交易系统和进行的某些交易，为了保持竞争力，你实际上必须在 100 纳秒以内处理并返回一个数据包。这是一个完全不同的技术范畴，对吧？ 人们有时会讨论，比如：“哦，你们能用 OCaml 编写高性能的东西吗？”我们的回答是：“我们可以。但对于这种级别的速度，不管你是用 OCaml、Rust 还是 C++ 编写都不重要，因为你根本无法使用 CPU。你必须使用 FPGA，它直接通过导线连接到网络上。你返回数据包的速度非常快，如果你在输入和输出的导线上连接一个示波器，你会看到数据包在被完全接收完之前，就已经开始从输出端发出去了。” 所以这是一个非常不同、非常特殊的领域。但是，当你处于这个时间领域时，你实际上无法进行太多的计算，你所做的决策将会非常简单。事实上，在决策的“聪明程度”（无论是模型还是其他某种甚至是手写的决策过程）与“返回速度”之间，存在着一条完整的权衡曲线。 而构建最佳交易策略的正确方法，实际上是采用一种集成（ensemble）方法。对于某些类型的决策，你会非常迅速地做出非常简单的决策；对于某些类型的决策，你的运作规模可能是——不再是考虑 100 纳秒，也许是几微秒、几十微秒、几百微秒或毫秒；而在某些情况下，有些流程如果能在半小时或当天内完成决策返回，那也完全没问题，在这些时间跨度上，你在时间基础上同样具有竞争力。但在所有这些不同的时间跨度上，你所做的决策类型是完全不同的。
+**[00:54 – 01:10]**
+**EN:** actually have to turn around a packet in in under 100 nanoseconds and like that's a very different regime, right? You know, people sometimes talk about like, oh, can you guys write high performance stuff in OCaml? It's like we can, but like for this kind of speed, it's like it doesn't matter if you write in OCaml
+**中文：** 实际上必须在 100 纳秒内周转一个数据包，这是一个非常不同的机制，对吧？你知道，人们有时会说，哦，你们能用 OCaml 编写高性能的东西吗？好像我们可以，但是像这种速度，就好像你用 OCaml 编写并不重要
 
-**[—]**
-**EN:** Dwarkesh: Maybe you can't disclose this, but what are these models actually predicting? Surely not just the next tick in the order book—or maybe they are?
-**中文：** Dwarkesh：也许你不便透露，但这些模型究竟在预测什么？肯定不只是订单簿（order book）中的下一个变动吧，或者也许就是？
+**[01:10 – 01:24]**
+**EN:** or Rust or C++. You can't use a CPU, right? you are going to be on an FPGA that's like direct wire attached to the network and you're going to be turning around the packet so fast that if you like attached an oscilloscope to the wire on the way in and the wire on the way out you would see the packet start
+**中文：** 或 Rust 或 C++。你不能使用CPU，对吧？您将使用一个 FPGA，就像直接连接到网络的线路一样，您将如此快速地周转数据包，如果您喜欢将示波器连接到传入的线路和传出的线路，您将看到数据包开始
+
+**[01:24 – 01:39]**
+**EN:** to leave before it's done being consumed. So it's like a very different very specialized regime but like when you're in that time regime you really can't do very much computation. the decisions you're making are going to be very simple. And in fact, there's this kind of whole curve of trade-offs
+**中文：** 在它被消耗完之前离开。所以这就像一个非常不同的非常专业的制度，但是就像当你处于那个时间制度时你真的不能做太多的计算。你所做的决定将非常简单。事实上，存在着这样一条完整的权衡曲线
+
+**[01:39 – 01:57]**
+**EN:** between how smart is the decision that you're making, be it a model or some other kind of maybe even like handwritten decision-m process, and how fast the turnaround is. And like the the right way to build uh an optimal trading strategy is really to have a kind of ensemble approach where for some kinds
+**中文：** 您所做的决策（无论是模型还是其他类型的甚至可能是手写的决策过程）有多明智，以及周转速度有多快。就像建立呃最佳交易策略的正确方法一样，实际上是采用一种整体方法，对于某些类型
+
+**[01:57 – 02:14]**
+**EN:** of decisions you're making very s simple decisions very quickly. For some kind of decisions, you're operating at the scale of, you know, instead of thinking of a hundred nanos, maybe like a handful of mics or tens of microsconds or hundreds of microscs or milliseconds. And in some cases, there are processes where if you
+**中文：** 您可以非常快速地做出非常简单的决定。对于某些类型的决策，您的操作规模可能是，您知道，而不是考虑一百纳秒，可能像一把麦克风或几十微秒或数百微秒或毫秒。在某些情况下，在某些流程中，如果您
+
+**[02:14 – 02:33]**
+**EN:** can get that decision turned around, you know, in an hour or that day, that's totally fine. And you're you're kind of competitive on a time basis at each of these horizons. Uh but you're making very different kinds of decisions at all of them. Maybe you can't say but what what is it exactly these models are
+**中文：** 可以在一小时内或当天扭转决定，那完全没问题。在这些方面，你在时间上都具有竞争力。呃，但是你对所有这些都做出了非常不同的决定。也许你不能说，但这些模型到底是什么
+
+**[02:33 – 02:45]**
+**EN:** predicting like surely it's just not the next thing in the order book or maybe it is right so we're definitely like dancing towards stuff that's hard to talk about but I think the simplest and most important one that we've been thinking about like we think about it now but
+**中文：** 预测这肯定不是订单中的下一件事情，或者也许是正确的，所以我们肯定喜欢朝着难以谈论的东西跳舞，但我认为我们一直在思考的最简单和最重要的事情就像我们现在思考的那样，但是
 
 
-## 模型在预测什么：公允价值
+## 模型预测什么：公允价值（fair value）
 
 **SECTION_NOTE**
-- 最经典也最重要的预测目标是某资产的公允价值（fair value）
-- 可组合地融入多种交易流程；不止预测订单簿下一跳
+- 最经典也最重要的预测目标是资产的公允价值（fair value）
+- 可组合地融入多种交易流程；25 年前 Yaron 用线性回归时就在做这件事
+- 并非唯一预测目标，但信息含量最高
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Yaron: We're clearly touching on topics that are hard to talk about publicly. But I think the simplest and most important one—and the one we've been thinking about, not just now but since 25 years ago when I joined Jane Street and was building models with linear regression—is predicting something's fair value. Like, what do we think this thing is actually worth? That can compose into many different trading flows in a very composable way. It's not the only class of thing we predict, but it's a very important one.
-**中文：** Yaron：我们现在显然是在触及一些很难公开谈论的话题。但我认为最简单也最重要的一个，也是我们一直在思考的——不仅是现在在想，25 年前我刚加入 Jane Street、用线性回归等工具构建模型时就在想——一个非常有用、非常经典的事情就是预测某样东西的公允价值（fair value）。比如，我们认为这个东西真正值多少钱？这能够以一种非常可组合的方式融入到许多不同的交易流程中。这并不是我们作为预测目标的唯一一类事物，但它是一个很重要的目标。
+**[02:45 – 03:00]**
+**EN:** like also 25 years ago when I started at Jane Street when I was building like models out of linear regression you know and stuff like that like a very useful kind of thing is to predict a fair value for a thing like what do we think this thing is worth and that fits in in a very kind of composable a into lots of
+**中文：** 就像 25 年前，当我在 Jane Street 开始工作时，我正在用线性回归构建类似的模型，你知道，类似的东西是一种非常有用的东西，就是预测一个东西的公允价值，比如我们认为这个东西值多少钱，并且它适合于一种非常可组合的东西
+
+**[03:00 – 03:13]**
+**EN:** different trading processes. That's not the only kind of thing that we use as a prediction target, but it's an important one. It seemed like a meme I was getting for a while about like what trading firms do is like you you got to get the colo and the where the NASDAQ exchanges and it's
+**中文：** 不同的交易流程。这不是我们用作预测目标的唯一一类东西，但它是一个重要的东西。这似乎是我有一段时间听到的一个模因，关于贸易公司所做的事情就像你一样，你必须获得 colo 以及纳斯达克交易所的位置，它是
 
 
-## 推理放在哪：托管（colo）、FPGA 与 GPU 的权衡
+## 推理放在哪：托管（colo）、自建与工程约束
 
 **SECTION_NOTE**
-- 推理可在 CPU / FPGA / GPU 上，取决于算力、模型大小与延迟
-- 越大的模型在物理位置上越灵活；极速段甚至要量光纤长度
-- 把 GPU 塞进交易所旁托管机房会受供电/冷却/服务商规则约束
+- 推理可放在 CPU / FPGA / GPU，取决于算力需求、模型大小与延迟要求
+- 「必须把机器放在交易所旁边」是误解；越大越慢的负载可以放得更远
+- 极端低延迟场景下，连光纤长度都要被测量优化
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: For a while there was this meme about what trading firms do: you've got to nail colocation—move next to the NASDAQ exchange, your machines have to be right there, that's super important.
-**中文：** Dwarkesh：有一阵子，我感觉有一种关于交易公司在做什么的梗（meme），那就是：你必须搞定服务器托管（colo），搬到纳斯达克交易所所在的地方，你的机器必须紧挨着那儿，这非常重要。
+**[03:13 – 03:27]**
+**EN:** very important that your machines are right there without thinking without thinking too much about the exact details of what we put where. like your inference processes might be on CPU, might be on FPGA, might be on GPU depending on the kind of constraints of
+**中文：** 非常重要的是，您的机器就在那里，无需过多考虑我们放置的具体细节。就像你的推理过程可能在 CPU 上，可能在 FPGA 上，可能在 GPU 上，具体取决于约束的类型
 
-**[—]**
-**EN:** Yaron: Without going into where we put what specifically, your inference process might run on CPU, on FPGA, or on GPU, depending on how much compute you need, how big the model is, what latency you need to return. Yes, the bigger, slower things you can put farther away. Cramming all your compute right next to the exchange is a headache. And for the truly extremely fast stuff, just being in the colo isn't enough—you even care about how long the cable coil is, because at those nanosecond levels you really have to measure the fiber length. But in general, bigger models give you far more flexibility in where they're physically placed.
-**中文：** Yaron：在不深入讨论我们把什么东西放在哪里的具体细节的前提下，你的推理（inference）过程可能在 CPU 上，可能在 FPGA 上，也可能在 GPU 上，这取决于你需要多少计算量、模型有多大、需要怎样的延迟返回等约束条件。 是的，更大、更慢的东西，你可以把它放得更远一些。把所有的计算设备都紧挨着交易所放置是很令人头疼的。而对于那些真正极其快速的事物，仅仅待在托管机房里是不够的，你甚至会关心通往那里的线缆线圈有多长——在那种极低的纳秒级别下，你真的需要去测量光纤布线的长度。但总的来说，更大的模型在它们物理放置的位置上给你带来了大得多的灵活性。
+**[03:27 – 03:40]**
+**EN:** how much compute you need, how big the model is, what kind of latency turnaround do you need. And yeah, like bigger, slower things you can put farther away. It's annoying to have to put all the compute right by the exchange. And for the stuff that's like really really fast, like being in the
+**中文：** 您需要多少计算量、模型有多大、您需要什么样的延迟周转。是的，比如更大、更慢的东西你可以放得更远。必须将所有计算都放在交换机上是很烦人的。对于那些非常非常快的事情，比如在
 
-**[—]**
-**EN:** Dan: If we put GPUs in those colo facilities next to the exchange, now you have to follow their rules—whoever is the provider giving you that space. Also, your power, cooling, all those constraints are now a bit tighter than in a facility you design and operate yourself. So you have to come up with things like: 'Hey, maybe I can only fit one GPU per rack because it draws so much power, so I have to spread them out instead of being able to do efficient liquid cooling in a single rack.' So as our compute needs keep growing, these are the things we have to think about.
-**中文：** Dan：如果我们把 GPU 放在交易所旁边的这些托管设施中，现在你必须遵守他们的规则，你懂吧，是谁作为服务商为你提供那个空间。此外，你的电力、冷却，所有这些约束条件现在可能都比你自己设计和运营的设施要稍微更紧俏一些。所以，你现在必须想出一些办法，比如：“嘿，可能一个机架里我只能放一个 GPU，因为它消耗太多电了，所以我必须把它分散开来，而不是能够在一个机架里实现高效的液冷。”所以随着我们的计算需求不断增长，这些都是我们需要考虑的事情。
+**[03:40 – 03:57]**
+**EN:** colo isn't enough, you care about like how long is the spool of wire that gets you there. like you're literally like measuring out the length of the fiber runs when you're when again when you're like at this very very low nanosecond scale. Um but in general like the like bigger models give you a lot more
+**中文：** colo 还不够，你关心的是让你到达那里的线轴有多长。就像你真的在测量光纤的长度一样，当你再次处于这个非常非常低的纳秒尺度时。嗯，但总的来说，更大的型号可以给你更多的东西
+
+**[03:57 – 04:10]**
+**EN:** flexibility in terms of where they physically go. If we're putting GPUs in some of these colloccated uh facilities that are next to the exchanges right now, you have to work with with their rules. You know, who is who is that provider? Who is who is giving you that space? Yeah. And your power, your
+**中文：** 就他们实际去向而言的灵活性。如果我们现在将 GPU 放入交易所旁边的一些并置呃设施中，您就必须遵守他们的规则。你知道，那个提供者是谁？谁给你这个空间？是的。还有你的力量，你的
+
+**[04:10 – 04:23]**
+**EN:** cooling, all those constraints now are maybe slightly tighter than if you have a facility facility that you're designing and operating. Um so you're now having to kind of come up with ways to, hey, maybe I could only get one GPU in a rack because it consumes so much power. So now I have to spread it all
+**中文：** 冷却，现在所有这些限制可能比您正在设计和运营的设施稍微严格一些。嗯，所以你现在必须想出一些方法，嘿，也许我只能在机架中放置一个 GPU，因为它消耗太多电量。所以现在我必须传播这一切
+
+**[04:23 – 04:37]**
+**EN:** out rather than being able to do liquid cooled in one rack. So these are all uh things we need to keep in mind as our comput you know comput. You guys recently signed a $6 billion comput deal with CoreWeave. Mhm. What are you going to use that for?
+**中文：** 而不是能够在一个机架中进行液体冷却。所以这些都是我们在计算时需要牢记的事情。你们最近与 CoreWeave 签署了一项价值 60 亿美元的计算协议。嗯。你要用它做什么？
 
 
 ## 60 亿美元 CoreWeave 协议与 Jane Street 的「规模定律」
 
 **SECTION_NOTE**
-- 与 CoreWeave 签下 60 亿美元算力协议
-- 与基础模型实验室不同：价值来自模型架构的多样性与海量实验
-- 专用化源于数据源差异与「字节/浮点比」——金融数据噪声大、量更大
+- Jane Street 与 CoreWeave 签下 60 亿美元算力协议（另含 10 亿美元股权投资）
+- 「AI 世界有 scaling laws，我们也有 scaling laws」——但方向不同
+- 不算「训一个通用大模型」，而是多样化架构 + 大量实验迭代
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: You recently signed a $6 billion compute deal with CoreWeave (transcript misheard as 'core reef'). So what are you going to use it for?
-**中文：** Dwarkesh：你们最近与 CoreWeave（译注：速记错录为 core reef）签署了一项价值 60 亿美元的计算协议。嗯，你们打算用它来做什么？
+**[04:37 – 04:55]**
+**EN:** The rest of the AI world has scaling laws. We have scaling laws too and there are lots of models that we want to train. I think the thing that's interesting and maybe different between us and the kind of more traditional AI labs is the amount of diversity in model architecture and the amount of
+**中文：** 人工智能世界的其他部分也有缩放定律。我们也有缩放定律，并且我们想要训练很多模型。我认为我们与更传统的人工智能实验室之间有趣且可能不同的是模型架构的多样性和数量
 
-**[—]**
-**EN:** Yaron: Other parts of the AI world have scaling laws, and we have our scaling laws too—there are a lot of models we want to train. I think the interesting and possibly different point versus more traditional AI labs is the diversity of our model architectures and the number of experiments we're running. So a lot of the value comes from people trying a lot of very different new things in model design, giving researchers faster iteration times so they can discover more ideas and drive more innovation—and that turns out to be extremely important.
-**中文：** Yaron：AI 世界的其他领域有规模定律（scaling laws），我们也有我们的规模定律，有很多模型我们都想训练。我认为我们与那些更传统的 AI 实验室之间有趣且可能不同的一点在于，我们模型架构的多样性以及我们正在进行的实验数量。因此，你从中获得的大部分价值就在于，大家在模型设计中尝试了大量非常不同的新事物，给研究人员提供了更快的迭代时间，让他们能够发现更多的想法并推动更多的创新，这被证明是极其重要的。
+**[04:55 – 05:10]**
+**EN:** experimentation that we're doing. So a lot of the value you get from all of this is just people are like trying lots of very different new things in the model designs and giving researchers just like faster iteration time so they can discover more ideas and drive more innovation. It just turns out to be
+**中文：** 我们正在做的实验。因此，您从所有这一切中获得的很多价值只是人们在模型设计中尝试许多不同的新事物，并为研究人员提供更快的迭代时间，以便他们可以发现更多想法并推动更多创新。事实证明是
 
-**[—]**
-**EN:** Dwarkesh: In the case of those foundation-model labs, there's a benefit to training one fully general model that does everything, rather than building a bunch of custom different models. Can you help me understand why at Jane Street the trade-offs are different?
-**中文：** Dwarkesh：在那些基础模型实验室的情况下，训练一个能够做所有事情的、完全通用的单一模型是有好处的，而不是构建一堆定制的不同模型。你能让我了解一下，为什么在 Jane Street 会有不同的权衡取舍吗？
+**[05:10 – 05:25]**
+**EN:** incredibly important. In the case of these foundation labs, there's some gain from have training just one model that does everything that is fully general rather than building a bunch of custom different models. Can you give me a sense of why there's a different trade-off at Jane Street? For
+**中文：** 非常重要。就这些基础实验室而言，仅训练一个模型来完成完全通用的所有操作，而不是构建一堆自定义的不同模型，会带来一些好处。你能告诉我为什么简街有不同的权衡吗？为了
 
-**[—]**
-**EN:** Yaron: For us, some of the specialization is to be able to fit and consume the right data types, right? There are a huge number of potential data sources we can feed in. For example, we have many differences in the data rates we need to hit. Another factor that forces some specialization in what we do is that the overall inference and trading dynamics differ completely because of the 'bytes-to-flop ratio.' The data we train on is much larger, but per byte it carries less information, because financial data is very noisy. So the models tend to be smaller, while the data is noisier, has more noise, and is much larger in volume. Also, the different models we build for different applications differ from each other, right? When we figure out 'how do we exploit the additional information we get,' it involves all kinds of decisions—from 'how do we efficiently store and load data,' to 'how do we shape the model,' to 'how do we give the inference process the throughput and latency it needs.' There's a completely different set of trade-offs, so sorting that out and picking the best option for each application is very valuable.
-**中文：** Yaron：对我们来说，某些专门化是为了能够适应和消耗正确的数据类型，对吧？我们可以喂进去的潜在数据源非常多。比如我们在需要达到的数据速率上存在许多差异。 另一个让我们需要对所做的工作进行某些专门化的因素是，整体的推理和交易动态都因“字节与浮点运算比率”（bytes to flop ratio）的不同而变得截然不同。我们用来训练模型的数据量要大得多，但就单字节而言，这些信息量却比较少，因为金融数据噪声（noise）非常大。是的。因此，模型往往更小，而数据往往噪声更大、噪声更多，且数据量要大得多。 另外，我们针对不同应用构建的不同模型之间也是不一样的，对吧？当我们试图找出“我们该如何利用我们获得的更多信息”时，就会涉及到各种决策，从“我们如何高效地存储和加载数据”，到“我们如何塑造模型”，再到“我们如何让推理过程具备它所需的吞吐量和延迟”。这其中会有一整套截然不同的权衡。因此，去理清这些并为不同的应用挑选出最佳方案，是非常有价值的。
+**[05:25 – 05:41]**
+**EN:** us, some of the specialization is about being adapted to consume the right kind of data, right? And there are just like many possible data sources that we might be feeding in. There are like a bunch of just differences in the data rates that we need to achieve. Like just like another thing that like just makes us
+**中文：** 对我们来说，一些专业化是为了适应使用正确类型的数据，对吧？我们可能会输入许多可能的数据源。我们需要实现的数据速率也存在很多差异。就像另一件事一样让我们
 
-**[—]**
-**EN:** Dwarkesh: So what does your inference workload actually look like, or how does it compare to the big companies running LLM chatbots?
-**中文：** Dwarkesh：那你们的推理（inference）工作负载实际上是怎样的，或者说，它与传统的那些做大语言模型聊天机器人的大公司相比如何？
+**[05:41 – 05:56]**
+**EN:** need to kind of specialize some of what we're doing is just like the overall kind of both inference and trading dynamics are made different by just like the the bytes to flop ratio being different. We have like way more data that we are using to train the models, but the data is kind of bite for bite
+**中文：** 需要对我们正在做的一些事情进行专门化，就像推理和交易动态的整体类型因字节与触发器比率的不同而变得不同一样。我们有更多的数据用于训练模型，但这些数据是逐利的
+
+**[05:56 – 06:11]**
+**EN:** less informative just because financial data is very noisy. Yeah. Um, and so the models tend to be smaller and the data tends to be noisier noisier and there tends to be a lot more of it. And it's also different between different models that we build for different applications, right? As we try
+**中文：** 信息量较少只是因为财务数据非常嘈杂。是的。嗯，所以模型往往更小，数据往往更嘈杂，而且数据往往更多。我们为不同的应用程序构建的不同模型之间也有所不同，对吧？当我们尝试时
+
+**[06:11 – 06:27]**
+**EN:** and figure out like how can we leverage more of the information that we get. It's like oh now there's like all of the kind of decisions from like how do we store and load data efficiently to how do we shape the model to how do we make the inference process, you know, have both the throughput and latency that it
+**中文：** 并弄清楚我们如何才能利用更多我们获得的信息。就像哦，现在有各种各样的决策，从我们如何有效地存储和加载数据，到我们如何塑造模型，再到我们如何进行推理过程，你知道，拥有它所需要的吞吐量和延迟。
+
+**[06:27 – 06:44]**
+**EN:** needs. those there's going to be a whole different set of trade-offs there. And so there's just like a lot of value in kind of working that out and picking the the best thing that you can do for for different applications. What is the um inference workload actually or how does it compare to what
+**中文：** 需要。那里将会有一套完全不同的权衡。因此，解决这个问题并为不同的应用程序选择最好的事情是很有价值的。实际的推理工作负载是多少，或者它与实际的推理工作负载相比如何
 
 
 ## 推理工作负载：延迟、批处理与极高的数据速率
 
 **SECTION_NOTE**
-- 延迟比 LLM 聊天机器人更关键；批处理仍是问题
-- 单一市场（如纳斯达克行情）内因果序列化数据速率极高
-- 更关注数据加载；自研大规模对象存储
+- 推理负载与 chatbot 公司差异明显：延迟更敏感、批处理更受约束
+- 金融数据量大但单 byte 信息密度低（噪声高）
+- 因此更强调 data loading 性能与按因果顺序消费数据
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Yaron: Broadly, as you'd expect, latency matters more. Batching is still an issue; depending on the model you may have disaggregated models or parts of a model for the different symbols you're watching. So pulling data from multiple sources and batching it together matters too. I think another interesting point is that the data rate is really high. At big LLM labs the aggregate data rate from all users is high, but the sequential data from any single user is small; whereas when you're pulling bytes from the NASDAQ feed, the serial data rate you have to consume causally, within a single domain, is enormous. So again, the dynamics change. But I think a lot of the underlying engineering problems are similar—it's just that all the constants are tuned to different places, so you end up making different choices.
-**中文：** Yaron：大体上说，正如你所预料的，延迟更为关键。批处理（batching）仍然是一个问题，取决于你所做的模型，你可能会有针对你所观察的不同交易代码（symbols）进行解耦/分散（disaggregated）的模型或模型的一部分。因此，从多个数据源拉取数据并将其打包批处理在一起同样会产生影响。 我认为另一个有趣的点是，数据速率真的非常高。在大型大语言模型实验室里，你从所有不同用户那里获得的总体（聚合）数据速率也很高，但你从任何单一用户那里获得的序列数据量（sequential data）并不大；而当你拉取的数据是来自纳斯达克行情馈送（NASDAQ feed）的字节时，天哪，在单一领域内需要以因果前后相继的方式进行序列化消耗的数据速率极高。所以再次强调，这里的动态发生了改变。不过我认为，很多类似的基础工程问题其实大同小异，只是所有的常量都被微调到了不同的位置，因此你最终做出了不同的选择。
+**[06:44 – 06:59]**
+**EN:** your traditional big chatbot LLM company is doing in broadstrokes? Latency matters more as you might expect. Um, batching is still an issue. Like depending on the model you're doing, you might have models or a part of models that are kind of disagregated for different symbols that
+**中文：** 你们传统的大型聊天机器人法学硕士公司正在做大事吗？正如您所料，延迟更重要。嗯，批处理仍然是一个问题。就像根据您正在做的模型一样，您可能拥有模型或模型的一部分，这些模型或模型的一部分针对不同的符号进行了分类
 
-**[—]**
-**EN:** Dwarkesh: So what does that mean concretely for how you have to design these systems, from storage and otherwise?
-**中文：** Dwarkesh：这意味着在你们必须如何设计这些系统方面，无论是从存储还是其他方面来看，有什么具体体现？
+**[06:59 – 07:15]**
+**EN:** you're looking at. And so the same kind of like pulling in data from multiple sources and batching them together makes a difference. I think another thing that's interesting is just like the data rates are really high. Like the amount the the aggregate data rate that you get in a large LLM LLM lab from like all of
+**中文：** 你正在看。因此，从多个来源提取数据并将它们批处理在一起会产生不同的结果。我认为另一件有趣的事情是数据速率非常高。就像您在大型 LLM LLM 实验室中获得的总数据速率一样
+
+**[07:15 – 07:31]**
+**EN:** the different users is also very high. But the amount of sequential data that you're going to get from any one user is not that high. Whereas when you the the data that you're pulling is the bytes that are coming out of like the NASDAQ feed, it's like oh man the data rate that you want that kind of sequentially
+**中文：** 不同用户的使用率也很高。但是，您从任何一个用户那里获得的顺序数据量并不是那么高。然而，当您提取的数据是来自纳斯达克提要的字节时，天哪，您想要的数据速率是连续的
+
+**[07:31 – 07:49]**
+**EN:** consumed in one domain kind of causally one after the other is really high. And so again like the dynamics change and like but I think a lot of the same kind of basic engineering questions are not so dissimilar but like all the constants are twiddled to different places and so you end up making different choices.
+**中文：** 在一个领域中因果性地依次消耗的消耗量确实很高。再次像动态变化一样，但我认为很多相同类型的基本工程问题并没有那么不同，但就像所有常数都被扭曲到不同的地方，所以你最终会做出不同的选择。
 
 
 ## 存储、x86 与去中心化：被打破的两条捷径
 
 **SECTION_NOTE**
-- 曾靠「全 x86」与「单一大型数据中心」两条捷径简化工程
-- 如今电力受限、需全球分布式数据中心，计算与存储调度深度耦合
-- 被迫支持 ARM，放弃纯 x86
+- 过去「x86-64 + 现成存储」的捷径正在被打破
+- 自建 object store、更大规模的数据存储系统
+- 训练/推理 workload 与通用 LLM 实验室不同
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Yaron: Yes, I think we care more about data-loading performance than you typically see. We're doing a lot of work building our own large-scale data storage system, our own internal object store. We've used various vendors' products over time, but I think for some of these research-oriented use cases we need to run at a larger scale and deal with data-center diversity. Right? It's less an inference-time problem and more a training-time problem—we just can't get all the compute we want in one place. I don't know, I think a general trick to running a tech org effectively is figuring out which shortcuts you can take. One shortcut we were lucky to take for years was pretending the planet has only one CPU architecture—everything targeting x86_64, pretending nothing else exists—which simplified a lot. We also had one big research data center and one big storage cluster, which simplified a lot. And both of those are now broken. You just can't get that much power—you can't bring enough power into a single data center (Yaron jokingly called it 'thunderbolts') to power everything you need, so you have to build data centers around the world. So there's a huge disaggregation problem, which gives you a puzzle like: oh, now you have to interleave your compute scheduling and storage scheduling tightly. And there's a massive amount of data, so moving it between them is non-trivial. Also, we've had to give up 'x86-only' because Nvidia shipped a bunch of cool new products, which means you now have to support ARM too.
-**中文：** Yaron：是的，我认为与你通常看到的相比，我们对数据加载性能的关注度更高。我想我们正在做大量工作来构建我们自己的大规模数据存储系统，我们自己的内部对象存储（object store）。我们之前使用过各种供应商的产品，但随着时间的推移，我认为对于其中一些以研究为导向的用例，我们需要在更大的规模下运行，还需要应对数据中心的多样性。 对吧？这不太是一个推理时的问题，而更多是一个训练时的问题——也就是说，我们就是无法在同一个地方获得我们想要的所有计算资源。我不知道，我觉得总的来说，有效运营一个技术组织的一个重要诀窍就是去弄清楚你可以走哪些捷径。 我们多年来很幸运能够走的一个捷径是，我们可以假装这个星球上只有一种 CPU 架构，比如所有东西都是针对 x86_64 的，我们假装其他任何东西都不存在，这简化了许多事情。我们还曾拥有一个大型的研究数据中心和一个大型的存储集群，这也极大地简化了许多事情。 而实际上，这两点现在都已被打破了。比如，你就是无法获得那么大的电力，你无法在同一个数据中心里接入足够多的电力引入（译注：此处 Yaron 幽默地用了“thunderbolts/雷电”一词指代极高电力）来为你所需的所有事物供电，你需要把数据中心建在世界各地。所以这里存在一个巨大的去中心化/分散（disaggregation）问题，这也给你带来了一个难题，比如：哦，现在你必须考虑让你的计算调度和存储调度紧密交织在一起。而且有海量的数据，因此在它们之间移动这些数据绝非易事。 另外，我们也不得不放弃“仅限 x86”的做法，因为英伟达推出了一系列酷炫的新产品，这意味着你现在必须支持 ARM 架构了。
+**[07:49 – 08:04]**
+**EN:** What what does that mean in terms of the how you how you had to design these systems where whether it's in terms of storage or whatever else. Yeah, there's I think more emphasis on the performance of the data loading than you might otherwise see. I think we're doing a lot of work to build out our own
+**中文：** 这对于如何设计这些系统意味着什么，无论是在存储方面还是其他方面。是的，我认为数据加载的性能比您可能看到的更加重要。我认为我们正在做很多工作来建立我们自己的
 
-**[—]**
-**EN:** Dwarkesh: Zooming out, I want to ask a very naive question. There's a naive view that if you had AGI it could immediately do what Jane Street does. Help me understand why that naive view is naive.
-**中文：** Dwarkesh：放大视角，我想问一个非常天真的问题。可能会有一种天真的看法，认为如果你拥有了通用人工智能（AGI），它就能立刻做 Jane Street 所做的事情。请让我了解一下，为什么这种天真的看法是天真的？
+**[08:04 – 08:21]**
+**EN:** kind of largecale uh data storage system, our own kind of internal object store um where we've like used various kind of vendor products but um over time I think for some of these research focused use cases we kind of need to operate at a much larger scale and need also to deal with a diversity of data
+**中文：** 一种大型呃数据存储系统，我们自己的内部对象存储，我们喜欢使用各种供应商产品，但是随着时间的推移，我认为对于其中一些以研究为重点的用例，我们需要以更大的规模进行操作，并且还需要处理各种数据
+
+**[08:21 – 08:38]**
+**EN:** centers right and this is like less a training time less a inference time and more of a training time question of like we just can't get all the compute we want all in the same place And I don't know, I feel like in general like a an important trick in like effectively running a technical organization is
+**中文：** 中心正确，这就像更少的训练时间，更少的推理时间，更多的训练时间问题，就像我们无法在同一个地方获得我们想要的所有计算一样，我不知道，我觉得一般来说，有效运行技术组织的一个重要技巧是
+
+**[08:38 – 08:51]**
+**EN:** feeling is figuring out what shortcuts you can take. One shortcut that we were like privileged to be able to take for many years is we got to pretend like there was only one CPU architecture on the planet. Like everything was for like x86-64. We pretended like none of these other
+**中文：** 感觉就是弄清楚你可以采取哪些捷径。多年来我们有幸能够采取的一条捷径是，我们必须假装地球上只有一种 CPU 架构。就像一切都是为了 x86-64 一样。我们假装不像其他人
+
+**[08:51 – 09:08]**
+**EN:** things existed. Uh and that simplified a bunch of things. Uh and we also had like one big research data center and one big storage cluster and that also simplified a ton of things. And actually both of those have now been unwound like you just can't get the amount of power like you cannot wire in enough thunderbolts
+**中文：** 事物存在过。呃，这简化了很多事情。呃，我们还有一个大型研究数据中心和一个大型存储集群，这也简化了很多事情。实际上，这两个现在都已解除，就像您无法获得足够的电量，就像您无法连接足够的雷电一样
+
+**[09:08 – 09:21]**
+**EN:** into like the same data center to power all the things you need. You need to get the data centers built all over the place. So there's a big disagregation problem and that gives you a problem like oh now you have to think about like your compute scheduling and your storage scheduling being intertwined one with
+**中文：** 就像同一个数据中心一样为您需要的所有东西提供动力。您需要在各处建立数据中心。因此，存在一个很大的分解问题，这给您带来了一个问题，哦，现在您必须考虑您的计算调度和存储调度与
+
+**[09:21 – 09:39]**
+**EN:** the other and there's a ton of data. So moving around is like non-trivial. Um, and also we had to give up on this x86 only thing because Nvidia has a bunch of cool new products that mean that you need to support ARM. Now zooming out, I want to ask a very naive question. There's maybe a naive view that uh, you
+**中文：** 另一个有大量数据。因此，四处走动并不是一件小事。嗯，我们也不得不放弃这个 x86 唯一的东西，因为 Nvidia 有很多很酷的新产品，这意味着你需要支持 ARM。现在缩小范围，我想问一个非常天真的问题。也许有一种天真的观点认为，呃，你
 
 
-## 交易是「AGI 完全」问题
+## 交易是「AGI 完全」问题吗
 
 **SECTION_NOTE**
-- 激进问题：AGI 会立刻让 Jane Street 失业吗？——距离尚远
-- 交易类似「AGI 完全」/「NP 完全」：万事最终汇入交易
-- 人类认知比以往更有价值；招聘需求更强
+- 类比「NP-complete」：交易被视为一种「AGI-complete」问题
+- 如果真有了 AGI，它能否立刻取代 Jane Street 做的事
+- 这也是 Jane Street 大量投入算力的底层动机
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Yaron: Yes, I don't want to totally dismiss it. There is a picture of the world we have to take seriously: that we build LLMs or other AI systems that are strictly smarter than all humans on Earth, more capable on every cognitive task. Yes, that would be incredible; that's a completely different state. In that case, a large part of what Jane Street does could be automated, maybe we'd all sit back and drink more margaritas or something—I don't know what that world looks like. But it feels like we're not especially close to that stage. I think overall people easily underestimate how rich and complex this work is—not just at a company like Jane Street, but in any truly ambitious, hard, corporate-scale task. I especially feel that trading is kind of like an 'AGI-complete' problem, similar to how 'NP-complete' is. That means all the different problems in the world eventually bear on what you're doing in trading, because at the end of the day trading is about figuring out what things are worth, which means predicting the future, and a huge number of different things feed into that. As the parts get automated one by one, you run into the usual situation: the other hard parts we don't yet know how to automate well become the source of competitive advantage. I feel human cognition is more valuable than ever. I've never wanted to hire more engineers and traders than I do today, because everything people do is more valuable than before. Part of that is my skepticism that we're as close to models smarter than humans at everything as some think.
-**中文：** Yaron：是的，我不想完全否定它。确实有这样一种世界景象是我们需要认真对待的：也就是我们将构建出大语言模型或其他人工智能系统，它们在严格意义上比地球上的所有人类都更聪明，在所有认知任务上都更有能力。是的，那将会很不可思议，那将是一种完全不同的状态。在那种情况下，确实，Jane Street 所做的很大一部分事情可能会被自动化取代，也许我们大家都会坐享其成，多喝点玛格丽特鸡尾酒之类的，我不知道那个世界会是什么样子。但感觉我们现在距离那个阶段还不是特别近。 我认为总的来说，人们很容易低估这项工作的丰富性和复杂性，不仅是像 Jane Street 这样的公司所做的工作，实际上在任何真正有野心、高难度的公司级任务中都是如此。我尤其觉得，交易对我来说有点像“AGI 完全”（AGI-complete）问题，类似于“NP 完全”（NP-complete）问题。 这意味着世界上所有不同的问题最终都会在交易背景下影响你正在做的事情，因为归根结底，交易涉及弄清楚事物的价值，这意味着对未来做出预测，而许多不同的事情都会汇入其中。随着其中的各个部分被逐渐自动化，你就会遇到常见的情况：那些我们还不知道如何很好地自动化的其他困难部分，最终成为了竞争优势之所在。 我觉得人类和人类的认知比以往任何时候都更有价值。我从来没有像今天这样迫切地想要招聘更多的工程师和交易员，因为人们所做的每一件事都比过去更有价值。我的意思是，这在一定程度上是因为我持有一些怀疑态度，不认为我们距离在所有事情上都比人类聪明的模型像某些人想象的那么近。
+**[09:39 – 09:58]**
+**EN:** know, if you have AGI, it can like immediately do what Jane Street does. Give me a sense of like why that naive view is naive. Yeah. And I don't want to totally discount it like you know there's a world that we should take seriously where like you know we're going to build
+**中文：** 要知道，如果你有 AGI，它可以立即做 Jane Street 所做的事情。让我明白为什么这种幼稚的观点很幼稚。是的。我不想完全低估它，就像你知道有一个我们应该认真对待的世界，就像你知道我们要建立的那样
 
-**[—]**
-**EN:** Dwarkesh: Maybe this touches on physical infrastructure—actually nailing the colo—or maybe it's the software infrastructure you build. Can you help me understand what actually...
-**中文：** Dwarkesh：也许这涉及到物理基础设施，比如实际搞定托管机房；也许实际上是你们构建的软件基础设施。能让我了解一下到底是什么东西会……
+**[09:58 – 10:15]**
+**EN:** large language models or some other AI systems that are like strictly smarter than all humans on the planet and more capable at all cognitive tasks and like yeah that's going to be weird and that's like a different that's a that's a different a different state of things. Um, and in that case, yeah, you know,
+**中文：** 大型语言模型或其他一些人工智能系统，它们比地球上所有人类都更聪明，并且在所有认知任务上都更有能力，是的，这会很奇怪，就像一个不同的事物，这是一个不同的事物状态。嗯，在那种情况下，是的，你知道，
 
-**[—]**
-**EN:** Yaron: Yes, we build all kinds of extremely complex software for people to think about many different trading problems, some of which aren't very electronic at all. The diversity of this business is far richer than people imagine. There's a view like: 'Oh right, that must be a simple thing—you just need a bunch of smart people making smart decisions and writing good software, and if we automate the smart part we're done.' But I think it's more complex than that.
-**中文：** Yaron：是的，我们构建了各种各样极其复杂的软件，让人们去思考许多不同的交易问题，其中一些问题根本不怎么电子化。这个业务的多样性远比人们以为的要丰富得多。有一种想法是：“哦，对，那肯定是一件很简单的事，你只要有一群聪明的人，他们做出聪明的决策，写出优质的软件就行了。如果我们能把聪明这部分自动化，那就万事大吉了。”但我认为事情要比这复杂得多。
+**[10:15 – 10:29]**
+**EN:** maybe large amounts of things that Jane Street does will be automated away and, you know, maybe we'll all just like, you know, sit back and, you know, drink more margaritas or something. I don't know what that world looks like, but it doesn't feel like we're particularly close to that now. I think that like in
+**中文：** 也许简街所做的大量事情都会被自动化消除，你知道，也许我们都会喜欢，你知道，坐下来，喝更多的玛格丽塔酒什么的。我不知道那个世界是什么样子，但感觉我们现在离那个世界并不是特别接近。我认为就像
 
-**[—]**
-**EN:** Dwarkesh: What do you mean by the 'non-electronic' part of trading?
-**中文：** Dwarkesh：你所说的交易中“非电子化”的部分是指什么？
+**[10:29 – 10:47]**
+**EN:** general I think it's like easy to underestimate the richness and complexity of the work both that like a company like Jane Street does but really that is done in kind of any really like ambitious high difficulty like company scale task. I think trading in particular feels to me as like kind of
+**中文：** 总的来说，我认为很容易低估像 Jane Street 这样的公司所做的工作的丰富性和复杂性，但实际上这是以任何真正雄心勃勃的高难度（如公司规模的任务）完成的。我认为交易对我来说尤其感觉就像
 
-**[—]**
-**EN:** Yaron: I mean there's still trading done through chat between people, communicating and making decisions together. For example, someone will assess how much adverse selection the person on the other end of the phone represents—that's still a very real part of the business. There are different kinds of securities that take much longer to automate to a higher degree. For instance, the bond business is far less automated than what you see in equities. We're actually a bit puzzled by this ourselves. Those of us who've been in the industry a while—I started a bit late, so I didn't witness the equitization transition firsthand—but those who paid attention earlier felt: 'Alright, I guess everything else will go that way too.' Yet, you know, 25 to 30 years have passed and not everything went that direction. We don't see many people standing on exchange floors anymore, but there's still a lot of trading that deeply relies on humans and human judgment as an intermediary.
-**中文：** Yaron：我的意思是，现在仍然有通过聊天工具在人与人之间进行沟通、共同决策并完成的交易。比如有人会去评估电话那头的人代表了多大程度的逆向选择（adverse selection），这依然是业务中非常真实的一部分。 你知道，就是有不同种类的证券需要更长的时间才能实现更高程度的自动化。例如，债券业务的自动化程度就远不及你在股票业务中看到的水平。实际上，我们对此也有点困惑。我认为我们这些在行业里待了一段时间的人，虽然我开始得有点晚，没能真正见证股票走向电子化的转型过程，但那些比我关注得早一点的人会觉得：“行吧，我猜其他所有领域接下来也会这样。” 然而，你懂的，已经过去了 25 到 30 年，并不是所有事情都走向了那个方向。虽然我们现在已经不怎么看到有很多人站在交易所大厅里了，但依然有大量的交易深度依赖于人类以及人类的判断作为中介。
+**[10:47 – 11:06]**
+**EN:** AGI-complete sort of like NP-complete. It's like meaning like that like all of the different problems of the world end up influencing what you're doing in a trading context because at the end of the day trading involves figuring out what things are worth which means making predictions about the future and lots of
+**中文：** AGI 完全有点像 NP 完全。这就像世界上所有不同的问题最终都会影响你在交易环境中所做的事情一样，因为归根结底，交易涉及弄清楚事物的价值，这意味着对未来做出预测，并做出很多预测。
+
+**[11:06 – 11:21]**
+**EN:** different things flow into that and as various pieces of that get automated you know you have the usual thing of like the other hard parts that we don't yet know how to automate well that ends up being where the competitive edge lies I feel like humans and like human cognition are like more valuable than
+**中文：** 不同的东西流入其中，随着其中的各个部分实现自动化，你知道你有通常的事情，就像其他困难的部分一样，我们还不知道如何很好地实现自动化，最终成为竞争优势所在，我觉得人类和人类认知比人类更有价值
+
+
+## 人才悖论：越强的模型越抬高招聘门槛
+
+**SECTION_NOTE**
+- 「从未如此渴望招更多工程师」——模型越强，对人的要求反而越高
+- 人类判断与稀缺性在算力扩张中并未被削弱
+- 招聘标准只会更高，不会因算力替代而降低
+**END_SECTION_NOTE**
+
+**[11:21 – 11:38]**
+**EN:** ever. Like I have never been more desperate to hire more engineers and more traders than I am today because everything people are doing is more valuable than it was. I mean some of this is just me being somewhat skeptical that we are quite as close to the models that are like smarter than humans at all
+**中文：** 曾经。就像我从来没有像今天这样迫切地想要雇用更多的工程师和更多的交易员，因为人们所做的一切都比以前更有价值。我的意思是，其中一些只是我有点怀疑我们是否与比人类更聪明的模型非常接近
+
+**[11:38 – 11:52]**
+**EN:** the things as some people seem to think. Maybe it's like physical infrastructure like actually getting the colo. Maybe it's actually like the software infrastructure that you build. Like give me a sense of what it is that would Yeah, we build like a huge variety of complicated pieces of software, have
+**中文：** 有些人似乎认为的事情。也许这就像物理基础设施一样，就像实际获得托管服务一样。也许它实际上就像您构建的软件基础设施。就像让我了解它是什么是的，我们构建了各种各样复杂的软件，有
+
+**[11:52 – 12:06]**
+**EN:** people thinking about lots of different trading problems, some of which are not very electronic at all. Like the business is just like way more diverse than I think people give it credit for. And there's an idea of like, oh yeah, it's like it must be that like simple thing where you just like you just have
+**中文：** 人们思考许多不同的交易问题，其中一些根本不是很电子化。就像这个行业比我认为人们所认为的更加多样化一样。有一个想法，哦，是的，就像它一定是这样简单的事情，你只是喜欢你拥有
+
+**[12:06 – 12:18]**
+**EN:** smart people who like make smart decisions and write good software. And like if we could just automate the smartness part, that would be the whole thing. And I think it's just way more complicated than that. What what do you mean by the non electronic parts of trading?
+**中文：** 聪明的人喜欢做出明智的决定并编写优秀的软件。就像如果我们能够将智能部分自动化，那就是全部了。我认为事情比这复杂得多。交易的非电子部分是什么意思？
+
+**[12:18 – 12:32]**
+**EN:** I mean, there's still trading that happens via chat between people talking to each other and making decisions and like someone like sizing up how much adverse selection they think the person on the other side of the phone represents. That's like still a real part of the
+**中文：** 我的意思是，仍然存在通过人们之间的聊天进行交易并做出决定，就像有人喜欢评估他们认为电话另一端的人代表了多少逆向选择。那就像仍然是真实的一部分
+
+**[12:32 – 12:52]**
+**EN:** business. Um there's just like, you know, there's just different kinds of securities that have taken longer to get more automated. The bonds business for example is just like not nearly at the level of automation that you see in equities. Indeed, we I think we were kind of confused about this of like I
+**中文：** 商业。嗯，就像，你知道，只是有不同种类的证券需要更长的时间才能变得更加自动化。例如，债券业务与股票业务的自动化水平相差甚远。事实上，我认为我们对此有点困惑，就像我一样
+
+**[12:52 – 13:03]**
+**EN:** think those of us who have been like in the business for a while. We kind of I mean I I started a little too late to really see the kind of transition of equities becoming electronic. But I think people who are you know paying attention a little earlier than me were like yeah and I guess everything else
+**中文：** 想想我们这些已经在这个行业工作了一段时间的人。我的意思是，我开始有点太晚了，无法真正看到股票电子化的转变。但我认为比我早一点关注的人就像是的，我想其他一切
+
+**[13:03 – 13:18]**
+**EN:** comes next. And like you know what it's been like you know 25 30 years and like not everything has gone that way. the systems are still, you know, we don't have a lot of people like standing on the floor of exchanges anymore, but there's still lots of trading that is deeply intermediated by humans and human
+**中文：** 接下来是。就像你知道 25 到 30 年来的情况一样，但并不是所有事情都朝着这个方向发展。你知道，系统仍然存在，我们不再有很多人站在交易所的地板上，但仍然有很多交易是由人类和人类深度中介的
 
 
 ## 人类在环、相变与非电子化交易
 
 **SECTION_NOTE**
-- 高度赚钱日往往发生在极端事件、世界疯狂时，需人类判断
-- 模型难应对相变（phase transitions），人类元判断更优
-- 债券等品类自动化远低于股票；仍大量依赖人际沟通与判断
+- 大量交易仍深度依赖人类中介与人的判断
+- 系统要能穿越「相变（phase transition）」式的市场结构剧变
+- 人类在环（human-in-the-loop）在异常场景中仍是关键
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: Speaking of that, how much human-in-the-loop is there between the model and the trading decision?
-**中文：** Dwarkesh：说到这个，在模型和交易决策之间，人类参与（humans-in-the-loop）的程度有多高？
+**[13:18 – 13:32]**
+**EN:** judgment. King of which, how much are humans in the loop on between the model and the and the trading decision? Many of your most profitable days happen when like weird stuff happens and there are events and the world kind of goes crazy and like nobody knows what's going on and
+**中文：** 判断。最重要的是，人类在模型和交易决策之间的循环有多少？许多最赚钱的日子发生在奇怪的事情发生时，发生了一些事件，世界变得疯狂，就像没有人知道发生了什么，
 
-**[—]**
-**EN:** Yaron: Many of your most profitable days happen when something weird occurs, a big event, the world goes crazy, nobody knows what's happening. Providing liquidity in those situations is extremely hard, so you get paid more for it, and those days usually have enormous volume. Doing that well often requires human judgment—thinking 'what's different about today versus every other day?' To the extent possible we want to build models that handle phase transitions well, but we also think humans handle phase transitions better than models, and sometimes you need that meta-judgment about what to do. So even for highly automated systems there are people monitoring and making decisions, and we always have people watching—right? I think an important part of trading is paying attention during the day to what's happening and thinking about it, even though individual trades happen far too fast for a human to intervene on a single-trade basis.
-**中文：** Yaron：你们许多最赚钱的日子往往发生在一些奇怪的事情发生、出现重大事件、世界变得疯狂、没人知道发生了什么的时候。在那些情况下提供流动性往往极其困难，所以你为此获得的报酬也更高，而且在那些日子里通常会有巨大的交易量。要把这些做好，往往需要人类的判断力，去思考“今天与以往所有日子有什么不同？” 虽然在可能的范围内，我们希望构建能够很好应对相变（phase transitions）的模型，但我们也认为，人类在应对相变时比模型表现得更好，有时你需要这种元判断（meta judgment）来决定该怎么做。因此，即使对于高度自动化的系统，也需要负责监控的人员做出决策，而我们始终都有人在进行监控，对吧？我认为交易中一个重要的部分是在交易日内去关注和思考正在发生的事情，即使个别交易的发生速度远远快到人类无法在单笔交易的基础上进行干预。
+**[13:32 – 13:49]**
+**EN:** like that's when it's like very hard to provide liquidity in those contexts and so you get paid more for doing it and there's often a lot of volume on days like that and doing that well often involves human judgment of like thinking about like how is today different from all of the other
+**中文：** 就像那样，在这种情况下提供流动性非常困难，因此你会因此获得更多报酬，而且在这样的日子里通常会有很多交易量，而做好这件事往往需要人类的判断，比如思考今天与其他所有地方有何不同
 
-**[—]**
-**EN:** Dwarkesh: Dan, in the 20 years you've done this kind of construction (data centers), what's been the most significant change?
-**中文：** Dwarkesh：Dan，在你从事这类建筑（数据中心）工作的过去 20 年里，最显著的变化是什么？
+**[13:49 – 14:06]**
+**EN:** days and you know to the degree that we can we want to build the models that work well through phase transitions but also we think humans work better than models do through phase transitions and sometimes you need this kind of meta judgment to decide what to do and so there's a even for the systems that are
+**中文：** 天，你知道我们可以建立在相变中运行良好的模型，但我们也认为人类在相变中比模型工作得更好，有时你需要这种元判断来决定做什么，所以对于系统来说，有一个甚至是
+
+**[14:06 – 14:21]**
+**EN:** largely automated there are decisions to be made by the people who are watching and we always have people who are watching right I think an important part of trading is paying attention to and thinking about what's happening during the trading day even if the individual transactions are going by far too fast
+**中文：** 很大程度上是自动化的，决策是由观看的人做出的，而且我们总是有正确观看的人我认为交易的一个重要部分是关注并思考交易日内发生的事情，即使个别交易进展得太快
+
+**[14:21 – 14:36]**
+**EN:** for a human to kind of weigh in on a kind of transaction bytransaction basis. Dan, what what have been the more notable changes over the last 20 years that you've been doing in buildings like these? Yeah, people are actually care about data centers and want to talk about it.
+**中文：** 让人们在逐笔交易的基础上进行权衡。 Dan，过去 20 年来，您在此类建筑中所做的最显着的改变是什么？是的，人们实际上很关心数据中心并且想要谈论它。
 
 
 ## 物理工程视角：20 年变迁与当前瓶颈
 
 **SECTION_NOTE**
-- Dan：行业老方法被淘汰，开始为「能否早 6 个月上线 GPU」牺牲工程洁癖
-- 当前瓶颈：发电机、变压器、液冷设备交期长且变化快
-- 模块化/预制基础设施成为趋势
+- Dan 从物理工程视角回顾数据中心 20 年的变化
+- 从风冷到液冷、从少数机柜到高密度部署
+- 当前瓶颈更多来自供应链与交付周期
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dan: Yeah, people actually care about data centers now and want to talk about them. I've been doing cooling for a while, and suddenly everyone's discussing it and finds it interesting. So it's fun, exciting—I think my team feels the same. Some people in the data-center industry for 20 years still want to do things the old way, but I think that old method is being eliminated now. You see people challenging old assumptions, like: 'Hey, my whole data center has generators as backup power, but generators are one of the longest-lead-time items you can buy. So maybe we pull them out and only use generators for the core systems that need that resilience. That lets our GPUs come online six months earlier—let's do it!' So some things might not be the best engineering decision, but they're absolutely the best business decision. I think we're seeing more of that.
-**中文：** Dan：是啊，人们现在居然真的开始关心数据中心了，并且想要聊聊它。你知道，我做冷却系统已经有一段时间了，现在突然之间大家都开始讨论它，觉得它很有趣。所以这挺好玩的，很让人兴奋，我想我团队里的人也有同感。 有些在数据中心行业干了 20 年的人，仍然想用过去的方式去做事，但我认为这种老方法现在正在被淘汰。你会发现大家正在挑战以前的观念，比如：“嘿，我的整个数据中心都有发电机作为后备电源，但发电机是你能买到的交货周期（lead time）最长的设备之一。所以也许我们把它们拿掉，只把发电机用于需要这种弹性的系统核心部分。这能让我们的 GPU 提早六个月上线，那就干吧！”所以，你知道，有些事情也许从纯工程角度看不是最好的决定，但它绝对是最好的业务决定。我觉得类似这样的事情正在越来越多地出现。
+**[14:36 – 14:50]**
+**EN:** You know, been working on cooling for a while and now all a sudden people people talk about it and and and think it's interesting. So that's like that's fun and exciting. And for for folks on my team, I think they feel that way as well. There's people who have been in the data center industry for 20 years
+**中文：** 你知道，我们在冷却方面的研究已经有一段时间了，现在突然人们开始谈论它并且认为它很有趣。所以这很有趣而且令人兴奋。对于我团队中的人来说，我认为他们也有这种感觉。有人从事数据中心行业20年
 
-**[—]**
-**EN:** Dwarkesh: It feels like every year the bottleneck to scaling AI compute changes. As you do more negotiating and try to get more compute, setting aside compute, memory, and all the fun stuff, what's the bottleneck now, and what do you expect it to be?
-**中文：** Dwarkesh：感觉每年人们在扩大 AI 计算规模时遇到的瓶颈都在发生变化。在你们进行更多谈判并试图获取更多计算资源的过程中，抛开计算、内存和所有那些好玩的东西不谈，目前的瓶颈是什么？你预计未来的瓶颈会是什么？
+**[14:50 – 15:05]**
+**EN:** that kind of still want to do it the way they used to. And I think that's kind of falling by the wayside now. Uh you're finding ways where people are um challenging previous thoughts. Hey, these my entire data center is backed up by generators. But generators are some of the longest lead time items you can
+**中文：** 那种仍然想像以前那样做的人。我认为现在这种做法有点半途而废了。呃，你正在寻找人们挑战以前想法的方法。嘿，我的整个数据中心都是由发电机支持的。但发电机是您可以提供的交货时间最长的产品之一
 
-**[—]**
-**EN:** Dan: Generators, transformers, and some of the liquid-cooling equipment currently in use are in very high demand. And it changes fast—what I tell you today will be different in two weeks. One thing we do is work very closely with the internal procurement team to stockpile some of these. For the things we know are reusable across all data centers, we warehouse them and keep them ready. But parts like generators—you can't just put a huge generator in a normal warehouse; or if you're doing 'behind-the-meter' projects like turbines, you have to think more about those markets—where you get them, where you place them; you can't just set them aside. So the scarce parts definitely shift; those are some of the big ones. And as our density rises, one hope is that buildings can get a bit smaller, maybe we can build them faster, bundle all the compute tightly, and all the surrounding infrastructure is prefabricated and shipped to site. Right—modular data centers or modular infrastructure are becoming more common; these components, especially the long-lead-time ones, are designed and built off-site, then shipped to site, as close to plug-and-play as possible.
-**中文：** Dan：发电机、变压器，还有一些目前用于液冷的冷却设备，需求量都非常大。而且它变化得很快，我今天告诉你的情况，两周后肯定就不一样了。 我们做的一件事是，与内部的采购团队非常紧密地合作，去囤积其中的一些物资。对于那些我们知道在所有数据中心之间都可以通用的物资，我们会进行仓储并随时准备使用。但像发电机这样的部件，你不可能把一个巨大的发电机放进普通的仓库里；或者，例如如果你在做像涡轮机（turbine）这样“表后”（behind-the-meter）的项目，你就必须对这些市场多做一些思考——你从哪里获取它们，在何处进行安置，你不能随随便便把它们搁在一边。 所以，我认为紧缺的部件肯定是会变化的，刚才提到的就是其中一些大件。而且，随着我们的密度越来越高，一个希望是建筑可以变得稍微小一点，也许我们能够更快地把建筑盖好，把所有的计算资源紧凑地捆绑在一起，然后周围的所有基础设施可能都是预制好并运送到现场的。没错，模块化数据中心或模块化基础设施正在变得越来越普遍，这些组件（尤其是那些长交货周期的组件）在场外进行设计和建造，然后运到现场，尽可能地接近“即插即用”（plug-and-play）。
+**[15:05 – 15:22]**
+**EN:** buy. So maybe we take those away and only put it for a core part of the system that needs that resiliency. Um that gets our GPUs on six months faster. Let's do it. So those are things that uh you know maybe Maybe it's not the best engineering decision, but it's truly the best business decision. And I think it's
+**中文：** 买。因此，也许我们会把它们拿走，只把它放在需要这种弹性的系统的核心部分。嗯，这让我们的 GPU 运行速度加快了六个月。我们开始做吧。所以这些是你知道的事情，也许这不是最好的工程决策，但它确实是最好的商业决策。我认为这是
 
-**[—]**
-**EN:** Dwarkesh: One point you made earlier is that as rack density rises, more and more of the data center is actually the infrastructure around the rack itself. That's a bit like the package on a chip, right? Or the chip on the package. The compute core is only a tiny fraction of the total package area.
-**中文：** Dwarkesh：你之前提到的一个观点是，随着机架本身的密度越来越高，数据中心里越来越多的部分其实是围绕实际机架周围的基础设施。这实际上有点类似于芯片上的封装（package），对吧？或者说封装上的芯片。计算核心只占整个封装总面积的极小一部分。
+**[15:22 – 15:36]**
+**EN:** stuff like that that has been coming up more and more often. It feels like every year people change the what what is bottlenecking scaling AI compute right now as you're doing more negotiations and trying to acquire more comput. What what is the current bottleneck and what do you expect it to
+**中文：** 类似的事情越来越频繁地出现。感觉每年人们都会改变现在扩展人工智能计算的瓶颈，因为你正在进行更多的谈判并试图获得更多的计算。当前的瓶颈是什么以及您期望它是什么
+
+**[15:36 – 15:49]**
+**EN:** be for putting aside comput and memory and all that fun stuff. So generators, uh transformers, um some of the cooling equipment that's used now for the liquid cooling is is is in in a lot of demand. So um and it changes rapidly. What I tell you today is is going definitely
+**中文：** 是为了把计算和内存以及所有有趣的东西放在一边。因此，发电机、呃变压器，嗯，现在用于液体冷却的一些冷却设备的需求量很大。所以嗯，它变化很快。我今天告诉你的是肯定会发生
+
+**[15:49 – 16:05]**
+**EN:** going to be different 2 weeks from now. Um we do this thing we work very closely with internal teams on the procurement side uh to to stock up on some of this stuff. Stuff that we know is fungeible across all our data centers. We will warehouse and have it ready to go. Um, there's components like generators where
+**中文：** 两周后将会有所不同。嗯，我们做这件事时，我们与采购方面的内部团队密切合作，以储备一些这些东西。我们所知道的东西在我们所有的数据中心都是可替代的。我们将入库并准备好发货。嗯，有像发电机这样的组件
+
+**[16:05 – 16:18]**
+**EN:** you're not going to put a giant generator in a in a warehouse or or you know, for instance, if you're doing something behind the meter like a turbine, you're gonna you're going to have to think about those markets a little bit more. Um, where you're getting them, where you're staging them,
+**中文：** 你不会把一个巨大的发电机放在仓库里，或者你知道，例如，如果你在仪表后面做一些事情，比如涡轮机，你将不得不更多地考虑这些市场。嗯，你在哪里得到它们，在哪里展示它们，
+
+**[16:18 – 16:35]**
+**EN:** you can't just leave them off to the side. Um, so I think the components definitely change. Those are some of the big ones. And uh you know as we get to more and more density you know I think one hope is that the buildings get a little bit smaller and maybe and and and we're able to like you know build the
+**中文：** 你不能把它们放在一边。嗯，所以我认为组件肯定会改变。这些是一些大的。呃，你知道，随着我们的密度越来越大，我认为一个希望是建筑物变得更小一点，也许我们能够像你知道的那样建造
+
+**[16:35 – 16:49]**
+**EN:** buildings faster get all that compute kind of in a nice tight bundle and then all the infrastructure around it's got to got to be maybe pre-built and delivered to site right modular data centers or modular infrastructure is becoming more and more of a thing where these components especially the long
+**中文：** 建筑物更快地将所有计算都集中在一个紧密的捆绑中，然后围绕它的所有基础设施都必须预先构建并交付到正确的位置模块化数据中心或模块化基础设施正变得越来越重要，其中这些组件尤其是长
+
+**[16:49 – 17:07]**
+**EN:** lead components are being um designed and built offsite and shipped to site. So almost as close to plug-and-play as you can get. Well, one of the points you made earlier is that as uh as the racks themselves get more uh dense uh you know more and more of the data center is like the
+**中文：** 主要部件正在异地设计和制造并运送到现场。因此几乎尽可能接近即插即用。嗯，您之前提出的观点之一是，随着机架本身变得越来越密集，您知道越来越多的数据中心就像
 
 
-## 机架密度、封装类比与 NVL72 vs TPU
+## 机架密度、芯片封装类比与 NVL72 vs TPU
 
 **SECTION_NOTE**
-- 单机架迈向 1 兆瓦，冷却管路与供电是核心约束
-- 数据中心越来越像芯片封装：计算核心只占极小面积
-- NVL72/GB200 与 Google TPU 密度/水温策略不同，需前瞻兼容
+- 机架密度持续上升，建筑与基础设施要跟上
+- 把数据中心类比为「封装」：芯片在板卡上，板卡在机柜里
+- 讨论 NVL72 与 TPU 等不同技术路线的取舍
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dan: Yes, it's interesting. I mean, it doesn't solve anything by itself, and might cause other problems, of course. For example, when you hit 1 megawatt per rack, people ask: 'What does 1 MW per rack even mean?' The cooling pipes you hook into just get thicker and thicker. And whether we're using AC now or the trend toward 800V DC in the future, you still have to bring all those components to the same place. From our perspective, the interesting part is: we can design these engineering things, but at the end of the day, whether it's Nvidia, an ASIC company, or anyone else, they have to sell components that run in a data center, and they're thinking hard about what to sell, because you need people to be able to use it, right? If you build a 1 MW data center or a 1 MW rack but have no way to power and cool it, it's useless. So we're working very closely with almost everyone in this space to think about what components you need to support these next-gen products. Because lead times can exceed a year, and you often have to decide on infrastructure before you've even ordered the chips. So, for example, you try to... you know Google's TPUs use cooler water and are only about half the density of Nvidia's NVL72 (transcript misheard as 'NBL72 GP300'; this is Nvidia's NVL72 with GB200 chips). Right? So that needs a different strategy, and you have to make sure you're forward-compatible with handling these.
-**中文：** Dan：是的，这很有意思。我的意思是，这本身并不能解决任何问题，反而可能会带来其他问题，当然。比如，当你达到单机架 1 兆瓦（megawatt）的水平时，大家会问：“单机架 1 兆瓦到底是什么概念？”你接入那里的冷却管道只会变得越来越粗。而且，无论我们现在使用的是交流电（AC），还是未来的趋势——800 伏直流电（DC），你仍然必须把所有这些组件带到同一个地方。 从我们的角度来看，有趣的一点是，虽然我们可以设计这些工程上的东西，但归根结底，无论是英伟达、定制芯片（ASIC）公司还是其他任何人，他们都必须销售能够在数据中心运行的组件，而且他们也在非常认真地思考他们要卖什么，因为你需要人们能够用得上它，对吧？如果你建造了一个 1 兆瓦的数据中心或 1 兆瓦的机架，但却没有办法为其供电和冷却，那就毫无用处。所以我们正在与该领域的几乎所有人开展非常紧密的合作，去思考你需要哪些组件才能支持这些下一代产品。因为你所说的交货周期有时会超过一年，而你往往是在为芯片下订单之前就得对基础设施做出决定。 所以，比如你得尝试……你知道谷歌的 TPU，它们使用温度更低的水，而且它们的密度只有英伟达 NVL72（译注：此处速记错录为 NBL72 GP300，实际结合上下文应为英伟达的 NVL72 架构配 GB200 芯片）的一半。对吧？所以这需要不同的策略，而你必须确保未来能够兼容处理这些设备。
+**[17:07 – 17:24]**
+**EN:** infra around the actual racks which actually is kind of similar to um like a a a package on like a a chip right or like a chip on a package. It's like the the compute is a very small part of the total area of package. Yeah, it's it's interesting. thing. I
+**中文：** 实际机架周围的基础设施实际上有点类似于嗯，就像一个封装，就像一个芯片，或者像封装上的芯片。这就像计算只是封装总面积的很小一部分。是的，这很有趣。事物。我
+
+**[17:24 – 17:39]**
+**EN:** mean I I don't you know um it it doesn't solve any problems per se. I mean maybe it creates it creates others. Sure. Like you know you get to a one megawatt rack, right? People are like what does that even mean? One megawatt in a rack and and you know you know the the cooling kind of the pipe is just going to get
+**中文：** 我的意思是我不知道，它本身并不能解决任何问题。我的意思是，也许它创造了它也创造了其他人。当然。就像您知道的那样，您可以获得一兆瓦的机架，对吗？人们就像这到底意味着什么？机架中的一兆瓦，您知道管道的冷却类型将会变得
+
+**[17:39 – 17:53]**
+**EN:** larger that you're bringing there and uh the amount of power whether it's kind of the AC power that we're using now or 800 volt DC where it's where it's going in the future. You still have to bring all that those components to a spot. And the thing that's like interesting from our point of view is like you know we could
+**中文：** 比你带到那里的功率要大，无论是我们现在使用的交流电还是未来使用的 800 伏直流电。您仍然需要将所有这些组件带到一个地方。从我们的角度来看，有趣的事情就像你知道我们可以
+
+**[17:53 – 18:11]**
+**EN:** design these these engineering things but at the end of the day whether it's Nvidia or an ASIC or who they have to sell a component that can work in a data center and they're they're thinking very hard about what they sell um because you need people to use it right if you're if you build a one megawatt data center um
+**中文：** 设计这些工程东西，但归根结底，无论是 Nvidia 还是 ASIC，或者他们必须销售可以在数据中心工作的组件，他们都在认真思考他们销售的东西，因为如果你建造一个一兆瓦的数据中心，你需要人们正确使用它
+
+**[18:11 – 18:25]**
+**EN:** one megawatt rack but there's no way to power and cool it kind of useless. So, you know, we're working very closely with with kind of almost everyone in in that space to think about what are the components you need to be able to support these next generations because the lead times you're talking
+**中文：** 一个兆瓦的机架，但没有办法为其供电和冷却，有点无用。所以，你知道，我们正在与该领域的几乎每个人密切合作，思考你需要哪些组件来支持这些下一代，因为你所说的交货时间
+
+**[18:25 – 18:39]**
+**EN:** about, you know, over a year sometimes and you're just you're deciding on the infrastructure before you're placing an order for the chips. So, you know, you're trying, for instance, the you know, TPUs, they use lower temperature water and they're they're half as dense as as you know, an
+**中文：** 您知道，有时大约需要一年多的时间，您只是在订购芯片之前决定基础设施。所以，你知道，你正在尝试，例如，TPU，它们使用较低温度的水，它们的密度只有你知道的一半，
 
 
-## 算力的「备用用途」与「盲区」
+## 供应链：芯片、冷却、变压器与建设周期
 
 **SECTION_NOTE**
-- 与大厂不同，JS 几乎不存在闲置算力的「备用用途」
-- 存在大片「盲区」：若有更多算力就会去做的研究与实验
-- 隐性下注：竞争可能削弱业务价值，需时刻保持紧张
+- 发电机、变压器、液冷设备都在抢产能
+- 关键部件异地制造后运抵现场组装
+- 建设周期与交付能力成为新的约束
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: One reason hyperscalers can promise massive compute is they have some 'reserve use' for idle compute—something they can use at times they're not training or serving LLMs. For example, a company like Meta, if some GPUs aren't in use, can just say: 'Today we'll make the Instagram ad model slightly better.' For Jane Street, is there an equivalent reserve use for compute? That's arguably the floor of how much this compute is worth to you.
-**中文：** Dwarkesh：超大规模云服务商（hyperscalers）之所以能够承诺投入海量的计算资源，原因之一是他们对闲置计算资源有一些“备用用途”（reserve use），可以在特定时间不用于大语言模型训练或推理时派上用场。例如，像 Meta 这样的公司，如果他们买的某些 GPU 没在用，他们可以直接说：“我们今天就把 Instagram 的广告投放模型做得稍微好一点。”那么对于 Jane Street 来说，有什么对等的计算资源备用用途吗？这可以说是这些计算资源对你们价值的底线。
+**[18:39 – 18:55]**
+**EN:** NVL72 GB300, right? So that requires a different strategy and and you want to make sure you can handle those in the future. One of the things that allows hyperscalers to commit to large amounts of compute is that they have some reserve use for excess compute that
+**中文：** NVL72 GB300，对吧？因此，这需要不同的策略，并且您希望确保将来能够处理这些问题。允许超大规模计算者进行大量计算的原因之一是它们对多余的计算有一些保留用途
 
-**[—]**
-**EN:** Yaron: Part of it is that in many ways we're actually quite compute-constrained. A lot of the innovation, experimentation, and new ideas people have are limited by the compute we have. So in a sense, if we strictly evaluated the value of the different new tasks we could run, the value of the tasks we've had to turn down is actually very high. Right? So we're doing what we think is most valuable, but if it turned out we had more compute than those tasks need, there's a huge amount of other research and experimentation we could do in that space. So we're far from 'oh, we have too much compute'—we have the opposite problem. I think there are a lot of 'low-hanging fruits' in this direction, like retraining models more frequently, which is valuable. Over time model quality decays, and being able to re-run them has direct, clear value to the company. Also we can do a certain amount of bulk inference to fill gaps when nothing else is schedulable. So we don't have exactly an Instagram-ads equivalent, but there's a large 'dark space' of things we're not doing that we would do with more compute. So we're not at all worried about extracting value from these devices.
-**中文：** Yaron：部分原因在于，我们在很多方面其实面临着非常严重的计算资源受限。人们拥有的大量创新、实验和新想法都受限于我们所拥有的计算量。所以从某种意义上说，如果我们稍微严格地去评估一下我们能够运行的那些不同新任务的价值，会发现那些我们不得不拒绝的任务的价值实际上是非常高的。对吧？所以我们正在做我们认为最有价值的事情，但如果事实证明我们拥有的计算资源超出了这些任务所需，那么在那个领域还有海量的其他研究和实验可以做。所以我们还远远没有到说“噢，计算资源太多了”的地步，我们反而是遇到了相反的问题。 我认为在这个方向上也有很多“低垂的果实”（low-hanging fruit，容易实现的成果），比如更频繁地重新训练模型就是很有价值的。随着时间的推移，模型的质量会有所衰退，而能够重新运行它们——这对公司具有直接且明确的价值。此外，我们还可以执行一定数量的大量（bulk）推理任务，当系统中没有其他可调度的任务时，可以用它们来填补空白。因此，我们并没有完全类似于 Instagram 广告投放那样的应用，但确实存在一大片“盲区/未知空间（dark space）”，即那些我们没在做、但如果有了更多计算资源就会去做的事情。所以我们非常不担心无法从这些设备中榨取价值。 这里面确实有一系列的隐性下注（embedded bets），比如我们正在这些东西上投入巨资，你可以想象，有些事情的发展速度可能不会像我们预期的那么快，比如我们正在运行的各个模型和交易所产生的价值；而且这是一个竞争激烈的环境，也许其他人会击败我们。我认为保持优秀的要素之一，就是始终对竞争对手可能摸索出与你类似的做法并降低你的业务价值而感到紧张。所以，确实有可能出现一些并不顺利的情况。但显然，以我们目前现有的计算任务组合来看，我们距离遇到“算力过剩”这个问题还非常遥远。
+**[18:55 – 19:13]**
+**EN:** they're not using for training or inference of LLMs at a particular time. For example, like Meta, if they're not using some of the GPUs they bought, they can just say we'll just make our Instagram ad uh serving uh model slightly better for today. What is the equivalent sort of reserve use of compute for Jane
+**中文：** 他们不用于在特定时间对法学硕士进行训练或推理。例如，像 Meta 一样，如果他们没有使用购买的某些 GPU，他们可以说我们只是让今天的 Instagram 广告呃服务呃模型稍微好一些。 Jane 的计算储备用途的等效类型是什么
+
+**[19:13 – 19:28]**
+**EN:** Street that's just a lower bound on how much that's worth for you? Part of what's going on is like in many ways we're just like very compute constrained. There's lots of innovation and experimentation and new ideas that people have that is bounded by the amount of compute that we have. And so
+**中文：** 这条街只是对你来说价值多少的下限？正在发生的事情的一部分就像在很多方面我们就像非常计算受限一样。人们有很多创新、实验和新想法，但这些都受到我们拥有的计算量的限制。所以
+
+**[19:28 – 19:46]**
+**EN:** like in some ways like if we just think about like like we do a we try and and do a kind of moderately rigorous job of thinking about the value of the new different runs that we can do and the value of the runs that we're turning away is really quite high, right? So like we're doing what we think are the
+**中文：** 就像在某些方面，如果我们只是像我们所做的那样思考，我们尝试并做一种适度严格的工作，思考我们可以做的新的不同跑步的价值，以及我们正在放弃的跑步的价值确实相当高，对吗？就像我们正在做我们认为的那样
+
+**[19:46 – 20:00]**
+**EN:** most valuable things but you know if you know if it turns out we have more compute than we need for those there's just like a ton of other research and experimentation that we can do in that space. So like we're we're we're nowhere near to like being like oh too much compute like we sort of have
+**中文：** 最有价值的东西，但你知道我们是否拥有比我们需要的更多的计算能力，就像我们可以在该领域进行大量其他研究和实验一样。所以就像我们一样，我们远没有像我们那样拥有太多的计算能力
+
+**[20:00 – 20:17]**
+**EN:** have the opposite problem. I think there's also really lowhanging fruit in that direction. Just like it's valuable to retrain the models more often. There's some decay in the quality of models over time and being able to rerun them like that's that's kind of has immediate and clear value to the firm.
+**中文：** 有相反的问题。我认为在这个方向上也有非常容易实现的成果。就像更频繁地重新训练模型很有价值一样。随着时间的推移，模​​型的质量会有所下降，而能够像这样重新运行它们，对公司来说具有直接而明显的价值。
+
+**[20:17 – 20:36]**
+**EN:** Uh there's also some amount of bulk inference tasks that that we can do that can like fill in the gaps in the systems where there's nothing else to schedule. Um so we don't quite have the thing that looks like the analog of like the Instagram ad serving thing, but there is just like a ton of other like kind of
+**中文：** 呃，我们还可以执行一些批量推理任务，例如填补系统中没有其他可安排的空白。嗯，所以我们还没有类似 Instagram 广告服务的东西，但是有很多其他类似的东西
+
+**[20:36 – 20:53]**
+**EN:** dark space of like things that we're not doing, but we would if we had more compute. So we're like pretty unconcerned about getting value out of these. Here thing there is like there is a bunch of embedded bets like we are like investing a lot of money in in this stuff and you could imagine that like
+**中文：** 我们没有做类似事情的黑暗空间，但如果我们有更多的计算能力，我们就会做。所以我们对从这些中获取价值并不关心。这里有很多嵌入的赌注，就像我们在这个东西上投入了很多钱，你可以想象像
+
+**[20:53 – 21:07]**
+**EN:** things won't get better at the rate that we are thinking they will in terms of like the value of the individual models and trades that we're doing and like it's a competitive environment. maybe other people will out compete us. We're like I think one part of remaining good is like always being nervous about other
+**中文：** 事情不会以我们认为的速度变得更好，比如我们正在做的单个模型和交易的价值，以及这是一个竞争环境。也许其他人会比我们竞争。我们就像我认为保持良好的一部分就像总是对其他人感到紧张
+
+**[21:07 – 21:24]**
+**EN:** ways that competitors can like figure out doing similar things to what you're doing and reduce the value of of that. So like there are ways there are ways that it might not work out but uh certainly with anything like the current mix of compute jobs that we have we're just like very far from having this
+**中文：** 竞争对手可能会想办法做与你正在做的事情类似的事情，并降低其价值。因此，就像有一些方法可能无法解决问题一样，但是呃，当然，对于我们目前拥有的计算工作组合之类的东西，我们距离实现这一目标还很远。
+
+**[21:24 – 21:39]**
+**EN:** problem. It's it's interesting to this doesn't exactly answer it but like you know you could disconnect the uh the powering the data center from the chips and say okay well you know I I I might need to use this compute later let me commit to the data center and the power now but like delay the decision on the
+**中文：** 问题。有趣的是，这并没有完全回答这个问题，但就像你知道的那样，你可以断开数据中心与芯片的供电，然后说好吧，你知道我我我稍后可能需要使用此计算，让我现在就致力于数据中心和电源，但就像延迟做出决定一样
 
 
-## 电力 vs 芯片：拆分与分流
+## 电力 vs 芯片：能否拆分与分流
 
 **SECTION_NOTE**
-- 可将「供电/数据中心」与「买芯片」拆分，先锁定电力做多
-- 把部分容量分流（offload）给他人比分流芯片容易
+- 可以把供电的「长周期」部分与芯片采购解耦，提前锁定
+- 芯片昂贵且交期长，电力与空间可先行布局
+- 电力容量而非空间，才是真正的上限
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dan: This is interesting—it doesn't fully answer the question, but you can separate 'powering the data center' from 'buying the chips,' and say: 'Okay, I might need this compute later, let me lock in the data center and power now, but defer the very expensive chip purchase decision.' Right? At the time you might need the compute, position yourself as a bit 'long' on power and data-center capacity. Then we can design mechanisms like: hey, maybe we offload some of that capacity to others. For obvious reasons, for us it's much easier to offload power and data-center capacity than the chips themselves, but you can clearly split the two.
-**中文：** Dan：这很有意思，虽然这没有完全回答问题，但你可以把“为数据中心供电”与“购买芯片”剥离开来，然后说：“好吧，我以后可能会需要使用这些计算资源，让我现在先锁定数据中心和电力资源，但推迟对非常昂贵的芯片做出采购决策。”对吧？在那个你可能需要计算资源的时间节点上，先让自己处于电力和数据中心容量稍微“做多”（long，充裕）的状态。然后我们可以设计一些机制，比如：嘿，也许我们可以把其中一部分容量分流（offload）给其他人。出于显而易见的原因，对我们来说，分流电力和数据中心容量要比分流芯片本身容易得多，但你确实可以将这两者清晰地一分为二。
+**[21:39 – 21:56]**
+**EN:** chips which are very expensive right and and just be slightly long power and data center for that that that point of time where you might need that compute um and then we'll build in situations where hey maybe we can kind of offload some of that capacity to somebody else it's much easier for us I is to offload power and
+**中文：** 芯片非常昂贵，而且只是稍微长一点的电源和数据中心，在那个时间点，你可能需要计算嗯，然后我们将在这样的情况下构建，嘿也许我们可以将一些容量卸载给其他人，这对我们来说要容易得多，我是卸载电源和
 
-**[—]**
-**EN:** Dwarkesh: This also changes the hiring calculus. I mean, your hiring bar is already extremely high, but this raises it further. If you hire one more person, that person needs compute to run experiments, and that compute has to be traded off against other equally great people on your team who could do their own experiments.
-**中文：** Dwarkesh：这也改变了关于招聘的考量。我是说，你们招聘的门槛已经高到极致了，但这会让它进一步提高。如果你多招一个人，那这个人就需要计算资源来做实验，而这部分计算资源将不得不与你团队中其他同样优秀、本可以自己做实验的人进行权衡和取舍。
+**[21:56 – 22:11]**
+**EN:** data center capacity than is the chips themselves for obvious reasons. But uh you can you can really bifrocate those two. This also changes the considerations around hiring. I mean you already have like the highest bar for hiring but it just increases even more if you hire one
+**中文：** 数据中心的容量比芯片本身更大，原因显而易见。但是呃，你可以，你真的可以把这两者分开。这也改变了招聘方面的考虑因素。我的意思是，你已经有了最高的招聘门槛，但如果你雇佣一个人，门槛就会更高
 
 
-## GPU 规模：几万 → 几十万张；真正的瓶颈是人才
+## GPU 规模：几万 → 几十万张，瓶颈是人才
 
 **SECTION_NOTE**
-- 当前 GPU 约几万张，不久将达几十万张，由业务效益证明合理
-- 增长最大阻碍是培训新人、文化与导师辅导能力
-- 限制因素不是硬件，是找到优秀人才
+- 当前在「几万张 GPU」量级，不久将进入「几十万张」量级
+- 真正的瓶颈不是钱也不是电，而是人（研究员与导师辅导）
+- 算力的机会成本高，团队之间会竞争同一批资源
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Yaron: I see what you mean, but we wouldn't think: 'Oh, hiring more researchers is weird because then we'd have to give them more compute.' Instead, our logic is: research itself is extremely valuable, researchers are extremely valuable, and that's a great reason to buy more compute. So we're very motivated to scale up compute. For example, right now we have on the order of tens of thousands of GPUs, and in the not-too-distant future we'll be at hundreds of thousands of GPUs. We think that's fully justified by the business case. It's not like we're worried there: 'Oh, can we justify it by the trading P&L?' No, no, no—this is clearly a great investment. So on the hiring side this doesn't slow us down. In some ways the biggest constraint on growth is the time needed to actually train new people, integrate them into our culture, grow with them, and build this place together. We want Jane Street to remain a great place to work. I absolutely don't think hardware is the constraint on our development; I think the real constraint is finding great people, and our mentorship capacity.
-**中文：** Yaron：我明白你的意思，但我们不会去想：“噢，再招更多研究人员会很奇怪，因为那样我们就必须给他们更多的计算资源。”相反，我们的逻辑是：研究本身极其有价值，研究人员也极其有价值，这反而是购买更多计算资源的一个绝佳理由。 因此，我们非常有动力去扩大计算规模。比如目前，我们的 GPU 数量大约在几万张的范围内，而在不久的将来，我们将达到几十万张 GPU 的规模。我们认为这完全可以由业务效益来证明其合理性。你知道，这并不是说我们会在那里担心：“哦，我们能不能根据交易策略的损益（P&L）来证明它的合理性呢？”不，不，不，这显然是很好的投资。所以在招聘方面，这并不会让我们放慢脚步。 在某些方面，增长的最大阻碍在于需要时间去真正培训新人、让他们融入我们的文化、伴随他们成长并共同建设这个地方。我们希望 Jane Street 继续成为一个伟大的工作场所。我完全不认为硬件问题是阻碍我们发展的因素，我认为真正的限制因素是寻找优秀的人才，以及我们对他们的导师辅导能力（mentorship capacity）。
+**[22:11 – 22:29]**
+**EN:** more person that is one person who will need compute to do their experiments and that compute is going to be traded off against somebody else who's excellent on your team who could be doing experiments themselves. I I hear what you're saying, but we don't think, oh, it would be weird to hire more researchers because
+**中文：** 更多的人需要计算来完成他们的实验，并且计算将与团队中优秀的其他人进行权衡，而其他人可以自己做实验。我听到你在说什么，但我们不认为，哦，雇用更多研究人员会很奇怪，因为
+
+**[22:29 – 22:44]**
+**EN:** then we'd have to give them more comput. It's more like the research is incredibly valuable. The researchers are incredibly valuable. This is a good argument for buying more compute. Um, and so we're like very axed to grow the amount of compute. Like these days, we are in something like the range of like
+**中文：** 那么我们就必须给他们更多的计算能力。更像是这项研究非常有价值。研究人员非常有价值。这是购买更多计算资源的一个很好的论据。嗯，所以我们非常渴望增加计算量。就像现在一样，我们处于类似的范围内
+
+**[22:44 – 23:03]**
+**EN:** tens of thousands of GPUs and we will in not too long be in the range of hundreds of thousands of of GPUs. And we think it's like well justified by the business like you know it's not it's it's not like it's it's not like you know we're worried about like oh you know can we justify it based on like the penals of
+**中文：** 数以万计的 GPU，不久之后我们就会达到数十万 GPU 的范围。我们认为这在商业上是合理的，就像你知道的那样，不是这样的，不是你知道的，我们担心的是，哦，你知道，我们可以根据类似的惩罚来证明它是合理的吗？
+
+**[23:03 – 23:19]**
+**EN:** the trading strategy. It's like no no no it's like these are clearly good investments. Um so it doesn't feel like it's slowing us down on the hiring front. In some ways, the the biggest impediment to growth is that it takes time to like really train people and absorb them into the culture and kind of
+**中文：** 交易策略。就像不不不，这些显然是很好的投资。嗯，所以感觉这并没有减慢我们在招聘方面的速度。在某些方面，增长的最大障碍是需要时间来真正培训人员并将他们吸收到文化和类型中。
+
+**[23:19 – 23:34]**
+**EN:** build build them up and build the place up. Like we want Jane Street to continue to be a great place to work. Like I I just don't think of the hardware thing as at all being the thing that slows us down. And and I think the real limiting factors are finding great people and having the mentorship capacity for them.
+**中文：** 建造建造他们并建造这个地方。就像我们希望简街继续成为一个工作的好地方一样。就像我一样，我根本不认为硬件问题是拖慢我们速度的因素。我认为真正的限制因素是找到优秀的人才并为他们提供指导能力。
+
+**[23:34 – 23:46]**
+**EN:** I guess this might be a good opportunity for you guys to mention what kinds of roles you're currently hiring for. Oh man, why don't you start in the in the engineering space? Yeah, I I'll start. I mean, I think so, we're generally just looking for really smart people, people that that that are
+**中文：** 我想这对你们来说可能是一个很好的机会来提及你们目前正在招聘的职位类型。天哪，你为什么不从工程领域开始呢？是的，我会开始。我的意思是，我认为是的，我们通常只是在寻找真正聪明的人，那些人
 
 
 ## 招聘哪些岗位
 
 **SECTION_NOTE**
-- 物理工程：机械/电气/结构工程师、项目经理、建筑师（全生命周期）
-- ML/交易：架构设计、各类定制模型、LLM 训练全周期经验
-- 软件/硬件：通用 SWE、fleet-wide 优化、ASIC 设计
-- 新兴：形式化方法（用证明提效）、前端工程
-- 以人为本：工具应提升人的理解力、能动性与效率
+- 既招资深工程师，也招应届生，用多样化背景挑战既有假设
+- 强调「聪明、好奇」的人与团队协作（whole team sport）
+- 招聘门槛随算力扩张不降反升
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: I guess this might be a good chance for you to mention what kinds of roles you're hiring for right now?
-**中文：** Dwarkesh：我猜这可能是一个很好的机会，让你们提一下你们目前正在招聘哪些类型的职位？
+**[23:46 – 24:03]**
+**EN:** interested in in in doing this stuff and and that's, you know, mechanical engineers, electrical engineers, project managers, architects, people that help design and build some of these spaces. And, you know, our our our remit uh in my team is is really to to find the spaces, to design them, to construct
+**中文：** 对做这些事情感兴趣，你知道，机械工程师、电气工程师、项目经理、建筑师、帮助设计和建造其中一些空间的人。而且，你知道，我们团队的职责实际上是寻找空间、设计空间、建造空间
 
-**[—]**
-**EN:** Yaron: Gosh, Dan, do you want to start with engineering?
-**中文：** Yaron：天哪，那 Dan，你要不要先从工程领域开始聊聊？
+**[24:03 – 24:18]**
+**EN:** them, and then to operate them, right? So, it's full life cycle. So in each one of those you kind of need people you know lots of engineers, lots of what we call physical engineering which is a madeup term that that we came up with but uh you know mechanical engineers and structural engineers maybe electrical
+**中文：** 然后去操作它们，对吗？所以，它是完整的生命周期。因此，在每一个领域，你都需要一些人，你认识很多工程师，很多我们所说的物理工程，这是我们想出的一个虚构术语，但是呃你知道机械工程师和结构工程师，也许是电气工程师
 
-**[—]**
-**EN:** Dan: Sure, I'll start. Broadly, we're looking for very smart people interested in doing this kind of work. That includes mechanical engineers, electrical engineers, project managers, architects—the people who help design and build some of these spaces. My team's job is really to find the spaces, design them, build them, and then operate them—a full life cycle. So you need talent at every stage. You need a lot of engineers, a lot of what we call 'physical engineering'—a term we invented. Specifically mechanical, structural, maybe electrical engineers.
-**中文：** Dan：好的，我先来。我的意思是，总的来说，我们就是在寻找非常聪明、对做这些事情感兴趣的人。这包括机械工程师、电气工程师、项目经理、建筑师——也就是帮助设计和建造其中一些空间的人。你知道，我团队的职责实际上是寻找这些空间、进行设计、建造，然后去运营它们，这是一个全生命周期（full life cycle）。所以在每个阶段你都需要人才。你需要很多工程师，很多我们称之为“物理工程”（physical engineering）领域的人，这是我们自己发明的一个词。但具体来说就是机械工程师、结构工程师，可能还有电气工程师这类人才。
+**[24:18 – 24:34]**
+**EN:** engineers those types of folks and and machine learning and trading in general is really like a whole team sport and so we want to hire people from lots of different backgrounds and with lots of different capabilities. Uh we're certainly like very excited to hire people with kind of you know specific
+**中文：** 工程师这些类型的人，机器学习和交易一般来说真的就像一个完整的团队运动，所以我们想雇用来自许多不同背景和具有许多不同能力的人。呃，我们当然非常高兴能够雇用具有您所了解的特定知识的人员
 
-**[—]**
-**EN:** Yaron: And ML and the whole trading industry are really like a team sport, so we want to hire people from many different backgrounds with many different abilities. We're certainly excited to hire people with specific ML backgrounds—people doing architecture design and building models in various settings. As I mentioned, we have a bunch of custom architectures for our own specific, market-characteristic data. Also we build LLMs, and we're very interested in and scaling up people with experience across the LLM training life cycle. We hire a lot of people with good science and tech backgrounds—math, CS, physics, engineering—as traders. That requires a combined skill set, but it's an area we're continuously excited to hire in. On the software-engineering side, there's a general software-engineer role where we always want great people; it pays off well. As Dan said, smart, curious people with great CS backgrounds fit this general role and end up doing many different things. There are also many interesting specializations that excite us—for example, something fairly new: with today's compute scale, we're much more interested in fleet-wide optimization than before. Our old view of performance optimization was more about making the speed-critical parts as fast as possible, and generally compute was cheap while people were expensive, so we didn't spend much time optimizing general compute. But boy, now we're doing massive general compute, and when you start investing billions of dollars in this space, optimization becomes more valuable. People with experience at some hyperscalers—we very much want to hire more with that background to think about the optimization problems we're hitting. They're related but differ in important ways, so it's both a familiar and a new challenge. Also we do a lot of interesting hardware engineering, like designing our own custom chips (ASICs)—people with that experience excite us hugely. One more thing we mentioned at lunch: we're starting to think about a formal-methods team, basically using mathematical proofs to make software engineering more efficient. That's a very new, speculative area we're excited to invest in. I think that's a whole group of people I used to have to disappoint, telling them 'yes, we're not interested in formal methods.' But because of the whole AI revolution, formal methods suddenly became a much more interesting area, so that's somewhere we're excited to invest. Also, project managers, front-end devs. Actually, for most of Jane Street's history we pretended the whole web tech never happened—almost all our tools just ran in the terminal. But it turns out being able to draw a straight line, or have a tooltip, is really useful. So we've actually invested a lot in building great front-end tools and building tools for people. Having excellent front-end engineers—who are both great software engineers and understand how to make a user-friendly app—is very important. On all this, a meta point: I think amid all the reasonable and real excitement about AI tools, people sometimes overlook the importance of the human element. We really value building tools that benefit humans—including the AI tools themselves, right? I think advancing tools in a way that increases human understanding, agency, and efficiency is the core thing. The biggest constraint on our development is the outstanding people here, and whether we can find more of the right people and scale the organization so we can do more. So we take a very human-oriented approach to the systems we build.
-**中文：** Yaron：而且机器学习和整个交易行业其实非常像一项团队运动，所以我们希望招聘来自许多不同背景、拥有许多不同能力的人才。我们当然非常兴奋能招到一些拥有特定机器学习背景的人，比如从事架构设计和在各种情况下构建模型的人。就像我提到的，我们针对自己特有的、市场特征所需的数据，拥有一大堆定制的架构等。此外，我们也构建大语言模型（LLM），我们对在 LLM 训练生命周期的各个阶段有经验的人都非常感兴趣，并且一直在扩大这个领域的规模。 你知道，我们招募了大量拥有良好科学和技术背景的人——比如数学、计算机科学（CS）、物理、工程等专业——来做交易员。这需要一种综合性的技能。但这是我们持续非常兴奋去招人的一个领域。 在软件工程方面，有一个通用的软件工程师职位，我们总是渴望招到优秀的人才。我觉得这能带来很好的回报。虽然说起来有点傻，但正如 Dan 所说，聪明、充满好奇心且拥有极佳计算机科学背景的人，非常适合这个通用职位的角色，他们最终可以做很多不同类型的事情。 还有许多有趣的专业领域也让我们非常兴奋，例如有件相当新的事情：随着如今算力规模的发展，我们对全集群/全舰队范围的优化（fleet-wide optimization）比过去感兴趣得多。我们以前对性能优化的看法是，它更多是关于让那些对速度最关键（speed-critical）的部分尽可能地快，而更普遍的情况是，算力挺便宜的，而人力很贵，所以我们并不会花太多时间去优化我们的通用计算。但是，天哪，我们现在正在进行海量的通用计算，当你开始在这个领域投资数十亿美元时，优化就变得更有价值了。有些人曾在某些超大规模云服务商（hyperscalers）那里有过这方面的经验，我们非常希望招到更多具有这种背景的人，来思考我们正在遇到的优化问题。这些问题有相通之处，但在重要方面又有所不同，所以这既是一个相关的挑战，也是一个新的挑战。 另外，我们还做许多有趣的硬件工程工作，比如设计我们自己的定制芯片（ASICs），拥有这种经验的人同样让我们感到超级兴奋。 还有一件事，我们刚才吃午饭时提到过，我们开始考虑建立一个形式化方法（formal methods）团队，基本上是利用数学证明来让软件工程变得更有效率。这是一个非常新、极具探索性（speculative）的领域，我们非常兴奋能在那里找到人才。我觉得这是一整个群体的人，在过去我总不得不让他们失望，对他们说：“是的，我们对形式化方法不感兴趣。”但由于整个人工智能革命，形式化方法突然变成了一个有趣得多的领域，所以这是我们很兴奋去投资的地方。 另外，我也不知道，比如项目经理、做前端开发（front-end dev）的人。事实上，在 Jane Street 的大部分发展历程中，我们都假装这整套 Web 网页技术从未发生过，我们几乎所有的工具都只是在终端（terminal）里运行。但事实证明，如果能画一条直线，或者有一个工具提示（tool tip）之类的内容，是非常有用的。所以我们实际上投入了大量资源来构建非常出色的前端开发工具，并为人们打造工具。拥有杰出的前端工程师——他们既是优秀的软件工程师，又对“如何制作一款对用户友好的应用”有很好的理解——这是非常重要的。 关于所有这些，我想说一个总体的、更高维度的观点（meta point）：我认为，在当前围绕 AI 工具的所有合理且真实的兴奋中，人们有时会忽视这一切当中“人的因素”（human element）的重要性。我们真的非常看重构建对人类有益的工具，这也包括 AI 工具本身，对吧？我认为，以一种能够提高人类理解力、能动性（agency）和效率的方式去推动工具的发展，才是最核心的事情。限制我们发展的最主要因素，莫过于在这里工作的杰出人才，以及能否找到更多合适的人并扩大组织规模，从而让我们能做更多的事情。因此，在思考我们所构建的系统时，我们采用了一种非常以人为本（human-oriented）的方式。
+**[24:34 – 24:50]**
+**EN:** like machine learning backgrounds of like you know designing architectures and building models in various cases. We both I mentioned that we have like a bunch of like custom architectures and stuff for like our own bespoke kind of kinds of data that we need like the data kind of characteristic of the markets.
+**中文：** 就像你知道的机器学习背景一样，在各种情况下设计架构和构建模型。我们都提到过，我们有一堆类似的自定义架构和东西，用于我们需要的定制数据类型，例如市场特征的数据类型。
+
+**[24:50 – 25:12]**
+**EN:** Um we also build LLMs and people who experience in all sorts of part of the life cycle of LLM training. we're interested in hiring and have been growing that area. Um, you know, we we hire lots of like people with like generally good scientific and technical backgrounds from like math and CS and
+**中文：** 嗯，我们还培养法学硕士和在法学硕士培训生命周期的各个方面都有经验的人员。我们对招聘很感兴趣，并且一直在扩大这个领域。嗯，你知道，我们雇佣了很多类似的人，他们具有良好的科学和技术背景，例如数学和计算机科学，
+
+**[25:12 – 25:29]**
+**EN:** physics and engineering and stuff to be traders and like there's a kind of mix of skills there. Uh, but that's like an area we continue to be very excited to hire in. On the software engineering side, there's like a general software engineering role which we're always eager to get great people for uh that,
+**中文：** 物理和工程以及成为交易员的东西，就像那里有一种技能的组合。嗯，但这就像一个我们仍然非常高兴雇用的领域。在软件工程方面，有一个通用的软件工程角色，我们总是渴望为此找到优秀的人才，
+
+**[25:29 – 25:43]**
+**EN:** you know, I think just rewards a little bit, you know, it feels a little silly to say, but just like, you know, as Dan was saying, smart, curious people with really good CS backgrounds, uh, you know, fit into that generalist role and there's lots of different kinds of things they can end up doing. There's
+**中文：** 你知道，我认为只是奖励一点点，你知道，这么说感觉有点傻，但就像，你知道，正如 Dan 所说，聪明、好奇、拥有良好 CS 背景的人，呃，你知道，适合那种通才角色，他们最终可以做很多不同类型的事情。有
+
+**[25:43 – 25:59]**
+**EN:** also a bunch of interesting specialized areas where we really are excited. Like here's a thing that's kind of new. With all of this scale, we are much more interested in fleet-wide optimization than we were in the past. Like we our old view about about performance optimization was that it was much more
+**中文：** 还有一些我们非常兴奋的有趣的专业领域。就像这是一件新鲜事。有了如此规模，我们比过去对整个机队的优化更感兴趣。就像我们一样，我们对性能优化的旧看法是，它的作用要大得多
+
+**[25:59 – 26:13]**
+**EN:** about, you know, making the things that were most speedritical as fast as possible. And more generally, yeah, compute's kind of cheap and like people are expensive and we're not spending that much time optimizing our general compute. But like, man, we're doing a lot of general compute now. You know,
+**中文：** 你知道，关于尽可能快地制作最快速的事情。更一般地说，是的，计算有点便宜，就像人很贵一样，我们不会花那么多时间来优化我们的通用计算。但是，伙计，我们现在正在做很多通用计算。你知道，
+
+**[26:13 – 26:26]**
+**EN:** you start investing billions of dollars in this stuff and it just becomes more valuable there. And there are people who have experience in doing this at some of the hyperscalers and we'd love to hire more people with that kind of background to think about the optimization problems that we're hitting which are like
+**中文：** 你开始在这些东西上投资数十亿美元，它就会变得更有价值。有些人在一些超大规模企业有这方面的经验，我们很乐意雇用更多具有这种背景的人来思考我们遇到的优化问题，例如
+
+**[26:26 – 26:44]**
+**EN:** related in important ways different but like you know so it's like both a related challenge and a new one. Um we're like we do a lot of fun like hardware engineering stuff. We're like working on our own AS6 people with that kind of experience is super exciting. Um,
+**中文：** 两者在重要方面有所不同，但正如你所知，所以这既是一项相关的挑战，又是一项新的挑战。嗯，我们好像做了很多有趣的事情，比如硬件工程。我们就像与拥有这种经验的 AS6 人员一起工作是非常令人兴奋的。嗯，
+
+**[26:44 – 26:58]**
+**EN:** one thing that we mentioned a little earlier at lunch was like we're starting to think about building out a formal methods team using basically mathematical proof to make software engineering more effective. That's like a new very speculative area and we're like very excited to find
+**中文：** 我们在午餐时早些时候提到的一件事是，我们开始考虑使用基本的数学证明来建立一个正式的方法团队，以使软件工程更加有效。这就像一个新的非常投机的领域，我们很高兴发现
+
+**[26:58 – 27:12]**
+**EN:** people there. We feel like that's a kind of a set of a whole community of people who in the past I feel like I've always had to disappoint by like yeah we're not interested in formal methods but like I think the whole AI revolution makes formal methods suddenly a much more interesting field and so it's a place
+**中文：** 那里的人。我们觉得这是一个由一群人组成的完整社区，在过去我觉得我总是不得不失望，是的，我们对形式方法不感兴趣，但我认为整个人工智能革命使形式方法突然成为一个更有趣的领域，所以这是一个地方
+
+**[27:12 – 27:27]**
+**EN:** we're excited to invest in. So I don't know and like I don't know project managers people who do front-end dev actually like for most of Jane Street's experience we pretended like this whole web thing had never happened and like almost all all of our tools were just like in the terminal but you know it
+**中文：** 我们很高兴投资。所以我不知道，就像我不知道做前端开发的项目经理们实际上喜欢Jane Street的大部分经验一样，我们假装这整个网络事情从未发生过，就像我们所有的工具都像在终端一样，但你知道这一点
+
+**[27:27 – 27:40]**
+**EN:** turns out it's useful to be able to like draw a straight line and you know have a tool tip and things like that. So, we've actually invested a lot in building really good tools for doing front-end development and building tools for people and having great front-end engineers who are both really good
+**中文：** 事实证明，能够画一条直线是很有用的，而且你知道有一个工具提示之类的东西。因此，我们实际上投入了大量资金来构建非常好的前端开发工具，并为人们构建工具，并拥有非常优秀的优秀前端工程师
+
+**[27:40 – 27:56]**
+**EN:** software engineers and have a good sense of what it means to make an application that's good for a person is really important. I say like as as a general meta point about all of this, I think that like in all of the like legitimate and real excitement around AI tooling, I think people sometimes like
+**中文：** 对于软件工程师来说，充分了解制作对人有益的应用程序意味着什么，这一点非常重要。我说的是关于所有这一切的一般元点，我认为就像围绕人工智能工具的所有合法和真正的兴奋一样，我认为人们有时喜欢
+
+**[27:56 – 28:12]**
+**EN:** kind of miss out on the importance of the human element of all of this. I think that we really we really care a ton about building tools that are good for people and that comes that includes the AI tooling itself, right? I think trying to drive tooling in a way that increases human understanding and agency
+**中文：** 有点忽视了人为因素在这一切中的重要性。我认为我们真的非常关心构建对人们有益的工具，其中包括人工智能工具本身，对吗？我认为尝试以增强人类理解和能动性的方式驱动工具
+
+**[28:12 – 28:26]**
+**EN:** and efficiency is like that's the core thing. We are limited more than anything else by the amazing people who work there and like being able to find more of the right people and grow the organization so that we can get more done. Uh and so we have a very kind of humanoriented way that we think about
+**中文：** 效率就是核心。我们最受限制的是在那里工作的优秀人才，他们希望能够找到更多合适的人才并发展组织，以便我们能够完成更多工作。呃，所以我们有一种非常以人为本的思考方式
+
+**[28:26 – 28:44]**
+**EN:** the systems that we build. Um, it's been really cool to have you guys um, make these fun puzzles and challenges. I think in general you do that, but also you um, you've been uh, you guys have made a couple for the listeners of the podcast in particular. And I think people who are listening to
+**中文：** 我们构建的系统。嗯，有你们来制作这些有趣的谜题和挑战真是太酷了。我认为一般来说你们都会这样做，但你们也特别为播客的听众制作了一些。我认为那些正在倾听的人
 
 
-## 谜题文化与后门挑战
+## 谜题文化与开放世界挑战
 
 **SECTION_NOTE**
-- 谜题是 Jane Street 文化核心，曾出题寻找 LLM 后门触发词
-- 后门挑战无人能解全三题
-- 以谜题传递「在这里工作是什么样」
+- Jane Street 以「谜题（puzzles）」作为工程文化的组成部分
+- 开放世界式的挑战题，用于观察候选人如何思考
+- 详情见 janestreet.com 的 puzzles 页面
 **END_SECTION_NOTE**
 
-**[—]**
-**EN:** Dwarkesh: It's cool seeing you make these fun puzzles and challenges. I think you do this normally, and you made a few specifically for our podcast listeners. I think listeners going through this might find the puzzles interesting. By the way, one of the puzzles—not only did none of the contestants solve it, Jane Street itself couldn't solve it. That puzzle involved finding trigger phrases planted in various LLMs with backdoors. Anyway, I mention it because if people are interested in going deeper, I think these fun puzzles show a bit of what it's like to work here, and why it's an interesting place.
-**中文：** Dwarkesh：看你们制作这些有趣的谜题和挑战真的很酷。我认为你们平时就在这么做，而且你们还专门为我们播客的听众制作了几个。我觉得在听这期内容的听众可能会对去看看这些谜题很感兴趣。顺便说一句，其中有一个谜题，不仅提交参加竞赛的人里没有一个能解出来，连 Jane Street 自己也解不出来。那个谜题涉及寻找各种内置了触发词（trigger phrase）的大语言模型的后门。不管怎么说，我提到这一点是因为，如果大家有兴趣深入了解，我认为这些有趣的谜题可能会在一定程度上展现出在这里工作是什么样子的，以及为什么这里是一个有趣的地方。
+**[28:44 – 29:02]**
+**EN:** this might find it interesting to check those out. um uh including one by the way which not only was nobody who submitted to the competition able to solve but Jane Street itself cannot solve which um uh which involves finding back doors to various LLMs that have a trigger phrase baked into them. Anyways,
+**中文：** 检查这些可能会很有趣。嗯嗯，顺便说一句，其中一个问题不仅是提交竞赛的人无法解决，而且简街本身也无法解决，这涉及到寻找各种法学硕士的后门，这些后门中嵌入了触发短语。无论如何，
 
-**[—]**
-**EN:** Yaron: Yes, puzzles are deeply rooted in our culture, so using them as a way to connect with people is really great.
-**中文：** Yaron：是的，谜题是我们文化中根深蒂固的一部分，所以用它们作为一种与大家建立联系的方式真的很棒。
+**[29:02 – 29:15]**
+**EN:** I mentioned this because um uh to the extent people are interested in learning more, I think these are the kinds of fun puzzles that might give some indication of what work is like and um uh why things like fun place. Yeah, puzzles are a deeply embedded part of the culture. So, it's kind of great
+**中文：** 我提到这一点是因为嗯嗯，人们有兴趣了解更多，我认为这些都是有趣的谜题，可能会告诉你工作是什么样的，以及嗯嗯，为什么像有趣的地方这样的东西。是的，谜题是文化中根深蒂固的一部分。所以，这真是太好了
 
-**[—]**
-**EN:** Dwarkesh: Great, thank you both for the conversation.
-**中文：** Dwarkesh：太好了，感谢两位参与这次对话。
+**[29:15 – 29:31]**
+**EN:** to use them as a way to reach out to people as well. Yeah. Yeah. Um, I guess the plug here in this case is janestreet.com/doresh. Uh, so that people can learn more about the open worlds and about all these puzzles. Yep. Awesome. Cool. Thanks for doing this, guys. Thank you very much.
+**中文：** 也用它们作为接触人们的一种方式。是的。是的。嗯，我猜这里的推广链接是 janestreet.com/doresh。呃，这样人们就可以更多地了解开放世界和所有这些谜题。是的。太棒了。太棒了。谢谢你们这样做，伙计们。非常感谢。
 
-**[—]**
-**EN:** Yaron & Dan: Thank you so much, our pleasure.
-**中文：** Yaron & Dan：非常感谢，我们的荣幸。
+**[29:31 – 29:34]**
+**EN:** Our pleasure.
+**中文：** 我们的荣幸。
+
+---
+
+*说明：本逐字稿由 **YouTube 官方英文自动字幕（auto-generated captions）** 逐条导出，共 **453 条字幕块 / 约 6,378 词 / 全长 29:36**，每条均保留时间戳（`mm:ss`）；中文为机器翻译并做术语校对（`Ron Minsky→Yaron Minsky`、`Dan Ponttovo/Pavatova→Dan Pontecorvo`、`Okamel→OCaml`、`nanconds→nanoseconds`、`James Street→Jane Street`、`core reef→CoreWeave`、`NBL72 GP300→NVL72 GB300`、`Insta→Instagram`、`fleetwide→fleet-wide`）。*
